@@ -1,4 +1,4 @@
-const CACHE_NAME = 'flow-cache-v1';
+const CACHE_NAME = 'flow-cache-v2';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -6,6 +6,7 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
+  self.skipWaiting(); // Force the waiting service worker to become the active service worker
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -15,13 +16,37 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // For navigation requests (HTML), try network first, then cache
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          // Update cache with new response
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseClone);
+          });
+          return response;
+        })
+        .catch(() => {
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
+  // For other requests, try cache first, then network (Stale-While-Revalidate)
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
+        const fetchPromise = fetch(event.request).then(networkResponse => {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseClone);
+          });
+          return networkResponse;
+        });
+        return response || fetchPromise;
       })
   );
 });
@@ -37,52 +62,6 @@ self.addEventListener('activate', event => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim()) // Take control of all clients immediately
   );
 });
-
-self.addEventListener('periodicsync', (event) => {
-  if (event.tag === 'content-sync') {
-    event.waitUntil(syncContent());
-  }
-});
-
-async function syncContent() {
-  console.log('Periodic sync triggered');
-  const title = 'Periodic Sync';
-  const options = {
-    body: 'Content synced successfully!',
-    icon: '/icon.png'
-  };
-  if (Notification.permission === 'granted') {
-    self.registration.showNotification(title, options);
-  }
-}
-
-self.addEventListener('push', function(event) {
-  console.log('[Service Worker] Push Received.');
-  console.log(`[Service Worker] Push had this data: "${event.data ? event.data.text() : 'no data'}"`);
-
-  let title = 'New Notification';
-  let options = {
-    body: 'You have a new notification.',
-    icon: '/icon.png',
-    badge: '/badge.png'
-  };
-
-  if (event.data) {
-    try {
-      const data = event.data.json();
-      title = data.title || title;
-      options.body = data.body || options.body;
-      options.icon = data.icon || options.icon;
-      options.badge = data.badge || options.badge;
-    } catch (e) {
-      console.log('[Service Worker] Push data is not JSON, using text.');
-      options.body = event.data.text();
-    }
-  }
-
-  event.waitUntil(self.registration.showNotification(title, options));
-});
-
