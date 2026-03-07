@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Brain, Flame } from 'lucide-react';
 import { useAppContext } from '../store';
 import { TaskItem } from './TaskItem';
-import { getLocalDateString } from '../utils';
+import { getLocalDateString, parseTaskInput } from '../utils';
 import { HexColorPicker } from 'react-colorful';
 import { Archive, MatrixQuadrant } from '../types';
 
@@ -23,7 +23,7 @@ const CircularProgress = ({ completed, total }: { completed: number; total: numb
             stroke="currentColor"
             strokeWidth="6"
             fill="none"
-            className="text-border-strong"
+            className="text-bg4"
           />
           <circle
             cx="40"
@@ -47,12 +47,161 @@ const CircularProgress = ({ completed, total }: { completed: number; total: numb
   );
 };
 
-export const TodayView = () => {
-  const { tasks, setTasks, activeProject } = useAppContext();
+export const ProjectView = () => {
+  const { tasks, setTasks, activeProject, tags: globalTags, setTags: setGlobalTags } = useAppContext();
   
-  const baseTasks = activeProject 
-    ? tasks.filter(t => t.project === activeProject && !t.deleted)
-    : tasks.filter(t => !t.isInbox && !t.deleted);
+  const projectTasks = tasks.filter(t => t.project === activeProject && !t.deleted);
+
+  const sortTasks = (tasksToSort: typeof tasks) => {
+    return [...tasksToSort].sort((a, b) => {
+      return a.title.localeCompare(b.title);
+    });
+  };
+
+  const incompleteTasks = sortTasks(projectTasks.filter(t => !t.completed));
+  const completedTasks = sortTasks(projectTasks.filter(t => t.completed));
+
+  const handleAddTask = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+      const input = e.currentTarget.value.trim();
+      const { title, tags } = parseTaskInput(input);
+
+      // Add new tags to global tags
+      tags.forEach(tagName => {
+        if (!globalTags.find(t => t.name === tagName)) {
+          const newTag = {
+            id: `tag-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            name: tagName,
+            color: '#7c6af7'
+          };
+          setGlobalTags(prev => [...prev, newTag]);
+        }
+      });
+
+      setTasks(prev => [{
+        id: `t-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        title,
+        priority: 'p4',
+        tags,
+        completed: false,
+        isInbox: false,
+        dueDate: getLocalDateString(),
+        project: activeProject
+      }, ...prev]);
+      e.currentTarget.value = '';
+    }
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto p-3 px-3.5 md:p-5 md:px-6">
+      <div className="flex items-center gap-2.5 mb-6">
+        <h2 className="text-xl font-serif font-medium text-text-main">{activeProject}</h2>
+        <span className="text-xs text-text-faint bg-bg3 px-2 py-0.5 rounded-full font-mono ml-2">
+          {incompleteTasks.length} tasks
+        </span>
+      </div>
+
+      <div className="bg-bg2 border border-border-subtle rounded-[10px] p-3 px-4 flex items-center gap-3 mb-5 cursor-text">
+        <div className="text-text-faint w-4 h-4 flex items-center justify-center font-mono text-lg">+</div>
+        <input 
+          type="text" 
+          placeholder={`Add task to ${activeProject}...`} 
+          className="flex-1 bg-transparent border-none outline-none text-text-main text-sm font-sans placeholder:text-text-faint"
+          onKeyDown={handleAddTask}
+        />
+      </div>
+      
+      {/* Group tasks by section */}
+      {(() => {
+        const sections = Array.from(new Set(incompleteTasks.map(t => t.section || '')));
+        // Sort sections: empty string (no section) first, then alphabetical
+        sections.sort((a, b) => {
+            if (!a) return -1;
+            if (!b) return 1;
+            return a.localeCompare(b);
+        });
+
+        return sections.map(section => {
+          const sectionTasks = incompleteTasks.filter(t => (t.section || '') === section);
+          if (sectionTasks.length === 0 && !section) return null; // Skip empty default section if no tasks
+
+          return (
+            <div 
+              key={section || 'unsectioned'} 
+              className="mb-4"
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const draggedId = e.dataTransfer.getData('text/plain');
+                if (draggedId) {
+                  setTasks(prev => prev.map(t => {
+                    if (t.id === draggedId) {
+                      if ((t.section || '') !== section) {
+                        return { ...t, section: section || undefined };
+                      }
+                    }
+                    return t;
+                  }));
+                }
+              }}
+            >
+              {section && (
+                <div className="font-serif text-sm text-text-muted mb-2 mt-4 border-b border-border-subtle pb-1">{section}</div>
+              )}
+              {sectionTasks.map(t => <TaskItem key={t.id} task={t} />)}
+            </div>
+          );
+        });
+      })()}
+
+      <div className="mt-4 flex items-center gap-2">
+        <input 
+          type="text" 
+          placeholder="+ Add section..." 
+          className="bg-transparent border-none outline-none text-xs text-text-faint hover:text-text-muted transition-colors"
+          onKeyDown={e => {
+            if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+              const sectionName = e.currentTarget.value.trim();
+              setTasks(prev => [{
+                id: `t-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                title: `New task in ${sectionName}`,
+                priority: 'p4',
+                tags: [],
+                completed: false,
+                project: activeProject,
+                section: sectionName,
+                isInbox: false,
+                dueDate: getLocalDateString()
+              }, ...prev]);
+              e.currentTarget.value = '';
+            }
+          }}
+        />
+      </div>
+
+      {completedTasks.length > 0 && (
+        <>
+          <div className="flex items-center gap-2.5 mb-2 mt-6">
+            <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-text-faint">
+              Completed
+            </div>
+            <div className="flex-1 h-[1px] bg-border-subtle"></div>
+            <div className="font-mono text-[10px] text-text-faint">{completedTasks.length}</div>
+          </div>
+          {completedTasks.map(t => <TaskItem key={t.id} task={t} />)}
+        </>
+      )}
+    </div>
+  );
+};
+
+export const TodayView = () => {
+  const { tasks, setTasks, tags: globalTags, setTags: setGlobalTags } = useAppContext();
+  
+  const baseTasks = tasks.filter(t => !t.isInbox && !t.deleted);
 
   const sortTasks = (tasksToSort: typeof tasks) => {
     return [...tasksToSort].sort((a, b) => {
@@ -61,29 +210,37 @@ export const TodayView = () => {
   };
 
   const overdue = sortTasks(baseTasks.filter(t => !t.completed && t.dueDate && t.dueDate < getLocalDateString()));
-  // Only show tasks strictly due today, or tasks created today if no due date (optional, but sticking to due date for now)
-  // Removing sortTasks for 'today' to allow manual reordering
   const today = baseTasks.filter(t => !t.completed && (t.dueDate === getLocalDateString()));
-  
-  // Filter completed tasks to only show those completed TODAY
   const completed = sortTasks(baseTasks.filter(t => t.completed && t.completedDate && t.completedDate.startsWith(getLocalDateString())));
   
-  // Total for daily progress = (Overdue + Due Today) + Completed Today
   const totalTasks = overdue.length + today.length + completed.length;
   const completedCount = completed.length;
 
   const handleBrainDump = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-      const title = e.currentTarget.value.trim();
+      const input = e.currentTarget.value.trim();
+      const { title, tags } = parseTaskInput(input);
+
+      tags.forEach(tagName => {
+        if (!globalTags.find(t => t.name === tagName)) {
+          const newTag = {
+            id: `tag-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            name: tagName,
+            color: '#7c6af7'
+          };
+          setGlobalTags(prev => [...prev, newTag]);
+        }
+      });
+
       setTasks(prev => [{
         id: `t-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         title,
         priority: 'p4',
-        tags: [],
+        tags,
         completed: false,
         isInbox: false,
         dueDate: getLocalDateString(),
-        project: activeProject
+        project: undefined
       }, ...prev]);
       e.currentTarget.value = '';
     }
@@ -117,85 +274,20 @@ export const TodayView = () => {
 
       <div className="flex items-center gap-2.5 mb-2 mt-6">
         <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-text-faint">
-          {activeProject ? 'Tasks' : 'Today'}
+          Today
         </div>
         <div className="flex-1 h-[1px] bg-border-subtle"></div>
-        {!activeProject && <div className="bg-accent/20 text-accent2 font-mono text-[10px] px-2 py-0.5 rounded">March 2</div>}
+        <div className="bg-accent/20 text-accent2 font-mono text-[10px] px-2 py-0.5 rounded">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</div>
         <div className="font-mono text-[10px] text-text-faint">{today.length}</div>
       </div>
       
-      {activeProject ? (
-        <>
-          {/* Group tasks by section */}
-          {(() => {
-            const sections = Array.from(new Set(today.map(t => t.section || '')));
-            return sections.map(section => {
-              const sectionTasks = today.filter(t => (t.section || '') === section);
-              return (
-                <div 
-                  key={section || 'unsectioned'} 
-                  className="mb-4"
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    const draggedId = e.dataTransfer.getData('text/plain');
-                    if (draggedId) {
-                      setTasks(prev => prev.map(t => {
-                        if (t.id === draggedId) {
-                          // Only update section if it's different
-                          if ((t.section || '') !== section) {
-                            return { ...t, section: section || undefined };
-                          }
-                        }
-                        return t;
-                      }));
-                    }
-                  }}
-                >
-                  {section && (
-                    <div className="font-serif text-sm text-text-muted mb-2 mt-4">{section}</div>
-                  )}
-                  {sectionTasks.map(t => <TaskItem key={t.id} task={t} />)}
-                </div>
-              );
-            });
-          })()}
-          <div className="mt-4 flex items-center gap-2">
-            <input 
-              type="text" 
-              placeholder="+ Add section..." 
-              className="bg-transparent border-none outline-none text-xs text-text-faint hover:text-text-muted transition-colors"
-              onKeyDown={e => {
-                if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-                  const sectionName = e.currentTarget.value.trim();
-                  // Create a dummy completed task to hold the section if needed, or just add it to a new task
-                  setTasks(prev => [{
-                    id: `t-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                    title: `New task in ${sectionName}`,
-                    priority: 'p4',
-                    tags: [],
-                    completed: false,
-                    project: activeProject,
-                    section: sectionName
-                  }, ...prev]);
-                  e.currentTarget.value = '';
-                }
-              }}
-            />
-          </div>
-        </>
-      ) : (
-        today.map(t => <TaskItem key={t.id} task={t} />)
-      )}
+      {today.map(t => <TaskItem key={t.id} task={t} />)}
 
       {completed.length > 0 && (
         <>
           <div className="flex items-center gap-2.5 mb-2 mt-6">
             <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-text-faint">
-              {activeProject ? 'Completed' : 'Completed today'}
+              Completed today
             </div>
             <div className="flex-1 h-[1px] bg-border-subtle"></div>
             <div className="font-mono text-[10px] text-text-faint">{completed.length}</div>
@@ -722,6 +814,63 @@ export const ArchiveView = () => {
           </div>
         ))}
       </div>
+    </div>
+  );
+};
+
+export const FolderView = () => {
+  const { tasks, activeFolder, folders } = useAppContext();
+  
+  const folder = folders.find(f => f.name === activeFolder);
+  const folderProjects = folder ? folder.projects : [];
+  
+  const folderTasks = tasks.filter(t => 
+    !t.deleted && 
+    !t.isInbox && 
+    t.project && 
+    folderProjects.includes(t.project)
+  ).sort((a, b) => a.title.localeCompare(b.title));
+
+  return (
+    <div className="flex-1 overflow-y-auto p-3 px-3.5 md:p-5 md:px-6">
+      <div className="flex items-center gap-2.5 mb-6">
+        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: folder?.color || '#7c6af7' }}></div>
+        <h2 className="text-xl font-serif font-medium text-text-main">{activeFolder}</h2>
+        <span className="text-xs text-text-faint bg-bg3 px-2 py-0.5 rounded-full font-mono ml-2">
+          {folderTasks.length} tasks
+        </span>
+      </div>
+
+      {folderProjects.length === 0 ? (
+        <div className="text-center py-10 text-text-faint italic">
+          No projects in this folder.
+        </div>
+      ) : (
+        folderProjects.map(project => {
+          const projectTasks = folderTasks.filter(t => t.project === project);
+          if (projectTasks.length === 0) return null;
+          
+          return (
+            <div key={project} className="mb-8">
+              <div className="flex items-center gap-2 mb-3 border-b border-border-subtle pb-1">
+                <h3 className="font-mono text-xs uppercase tracking-wider text-text-muted">{project}</h3>
+                <span className="text-[10px] text-text-faint">{projectTasks.length}</span>
+              </div>
+              <div className="flex flex-col">
+                {projectTasks.map(t => (
+                  <TaskItem key={t.id} task={t} />
+                ))}
+              </div>
+            </div>
+          );
+        })
+      )}
+      
+      {folderTasks.length === 0 && folderProjects.length > 0 && (
+        <div className="text-center py-10 text-text-faint italic">
+          No tasks in this folder.
+        </div>
+      )}
     </div>
   );
 };

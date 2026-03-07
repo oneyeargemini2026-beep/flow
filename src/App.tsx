@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { AppProvider, useAppContext } from './store';
 import { Sidebar, Topbar } from './components/Layout';
-import { TodayView, InboxView, UpcomingView, DashboardView, MatrixView, CalendarView, ArchiveView, TrashView, HistoryView, TagsView } from './components/Views';
+import { TodayView, InboxView, UpcomingView, DashboardView, MatrixView, CalendarView, ArchiveView, TrashView, HistoryView, TagsView, FolderView, ProjectView } from './components/Views';
 import { AddTaskModal, ProcessInboxModal, FocusOverlay } from './components/Modals';
 
 const MainContent = () => {
@@ -80,6 +80,8 @@ const MainContent = () => {
         {currentView === 'calendar' && <CalendarView />}
         {currentView === 'archive' && <ArchiveView />}
         {currentView === 'tags' && <TagsView />}
+        {currentView === 'folder' && <FolderView />}
+        {currentView === 'project' && <ProjectView />}
         {currentView === 'trash' && <TrashView />}
         {currentView === 'history' && <HistoryView />}
       </div>

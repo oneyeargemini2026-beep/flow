@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../store';
 import { Task } from '../types';
-import { getLocalDateString } from '../utils';
+import { getLocalDateString, parseTaskInput } from '../utils';
 
 export const AddTaskModal = () => {
   const { isAddTaskOpen, setIsAddTaskOpen, setTasks, activeProject, folders, tags: globalTags, setTags: setGlobalTags } = useAppContext();
@@ -29,15 +29,32 @@ export const AddTaskModal = () => {
 
   const handleSave = () => {
     if (!title.trim()) return;
+
+    const { title: parsedTitle, tags: parsedTags } = parseTaskInput(title);
+
+    // Add new tags to global tags
+    parsedTags.forEach(tagName => {
+      if (!globalTags.find(t => t.name === tagName)) {
+        const newTag = {
+          id: `tag-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name: tagName,
+          color: '#7c6af7'
+        };
+        setGlobalTags(prev => [...prev, newTag]);
+      }
+    });
+
+    const finalTags = [...new Set([...tags, ...parsedTags])];
+
     const newTask: Task = {
       id: 't_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-      title,
+      title: parsedTitle,
       priority: priority as any,
       dueDate,
       dueTime,
       project,
       section: section.trim() || undefined,
-      tags,
+      tags: finalTags,
       completed: false
     };
     setTasks(prev => [...prev, newTask]);

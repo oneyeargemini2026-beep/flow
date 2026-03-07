@@ -28,6 +28,8 @@ interface AppContextType {
   setCurrentView: (v: ViewType) => void;
   activeProject: string | null;
   setActiveProject: (p: string | null) => void;
+  activeFolder: string | null;
+  setActiveFolder: (f: string | null) => void;
   tasks: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   folders: Folder[];
@@ -56,6 +58,7 @@ export const AppContext = createContext<AppContextType | null>(null);
 export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const [currentView, setCurrentView] = useState<ViewType>('today');
   const [activeProject, setActiveProject] = useState<string | null>(null);
+  const [activeFolder, setActiveFolder] = useState<string | null>(null);
   
   const [tasks, setTasks] = useState<Task[]>(() => {
     try {
@@ -284,6 +287,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     <AppContext.Provider value={{
       currentView, setCurrentView,
       activeProject, setActiveProject,
+      activeFolder, setActiveFolder,
       tasks, setTasks,
       folders, setFolders,
       archives, setArchives,

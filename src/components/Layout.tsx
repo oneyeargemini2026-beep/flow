@@ -4,7 +4,7 @@ import { ViewType } from '../types';
 import { HexColorPicker } from 'react-colorful';
 
 export const Sidebar = () => {
-  const { currentView, setCurrentView, folders, setFolders, setIsFocusOpen, setIsAddTaskOpen, activeProject, setActiveProject, isSidebarOpen, setIsSidebarOpen, tasks, setTasks, moveProject, renameProject, tags, setTags } = useAppContext();
+  const { currentView, setCurrentView, folders, setFolders, setIsFocusOpen, setIsAddTaskOpen, activeProject, setActiveProject, isSidebarOpen, setIsSidebarOpen, tasks, setTasks, moveProject, renameProject, tags, setTags, activeFolder, setActiveFolder } = useAppContext();
   const [draggedFolderId, setDraggedFolderId] = useState<string | null>(null);
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const [draggedProject, setDraggedProject] = useState<{ name: string, folderId: string } | null>(null);
@@ -450,7 +450,7 @@ export const Sidebar = () => {
                 {item.id === 'today' ? (
                   <div className="ml-auto flex items-center justify-center w-5 h-5 relative">
                     <svg width="20" height="20" viewBox="0 0 20 20" className="transform -rotate-90">
-                      <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" strokeWidth="2" className="text-border-strong" />
+                      <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" strokeWidth="2" className="text-bg4" />
                       <circle 
                         cx="10" cy="10" r="7" 
                         fill="none" 
@@ -489,8 +489,14 @@ export const Sidebar = () => {
                 onDrop={(e) => handleFolderDrop(e, folder.id)}
               >
                 <div 
-                  className="flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] text-text-muted hover:bg-bg3 hover:text-text-main transition-colors group"
-                  onClick={(e) => { e.stopPropagation(); toggleFolder(folder.id); }}
+                  className={`flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] transition-colors group ${activeFolder === folder.name && currentView === 'folder' ? 'bg-accent/15 text-accent2' : 'text-text-muted hover:bg-bg3 hover:text-text-main'}`}
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    setActiveFolder(folder.name);
+                    setActiveProject(null);
+                    setCurrentView('folder');
+                    if (window.innerWidth < 768) setIsSidebarOpen(false);
+                  }}
                 >
                   <div className="text-text-muted text-xs cursor-grab opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">⠿</div>
                   <button 
@@ -543,7 +549,10 @@ export const Sidebar = () => {
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
                     )}
                   </button>
-                  <span className="text-[10px] text-text-faint cursor-pointer shrink-0 px-1">
+                  <span 
+                    className="text-[10px] text-text-faint cursor-pointer shrink-0 px-1 hover:text-text-main"
+                    onClick={(e) => { e.stopPropagation(); toggleFolder(folder.id); }}
+                  >
                     {folder.open ? '▼' : '▶'}
                   </span>
                 </div>
@@ -560,7 +569,7 @@ export const Sidebar = () => {
                         onDragOver={(e) => handleProjectDragOver(e, proj)}
                         onDrop={(e) => handleProjectDrop(e, proj, folder.id)}
                         className={`flex items-center gap-2 p-1.5 px-2.5 rounded-md cursor-pointer text-[12.5px] transition-colors border-t-2 group/project ${dragOverProjectId === proj ? 'border-t-accent' : 'border-t-transparent'} ${activeProject === proj ? 'text-accent2' : 'text-text-faint hover:text-text-muted'}`}
-                        onClick={() => { setActiveProject(proj); setCurrentView('today'); if (window.innerWidth < 768) setIsSidebarOpen(false); }}
+                        onClick={() => { setActiveProject(proj); setCurrentView('project'); if (window.innerWidth < 768) setIsSidebarOpen(false); }}
                       >
                         <span>◈ {proj}</span>
                         {pendingCount > 0 && (
@@ -662,120 +671,6 @@ export const Sidebar = () => {
                 onClick={() => setIsCreatingFolder(true)}
               >
                 <span className="text-base leading-none">+</span> New folder
-              </div>
-            )}
-          </div>
-
-          <div className="p-3 pb-1 mt-0 border-t-0">
-            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-faint px-2 pb-2">Tags</div>
-            {tags.map(tag => (
-              <div 
-                key={tag.id} 
-                className={`flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] text-text-muted hover:bg-bg3 hover:text-text-main transition-colors group ${draggedTagId === tag.id ? 'opacity-30 border-dashed border-border-strong bg-transparent' : ''} ${dragOverTagId === tag.id ? 'border-t-accent border-t-2 bg-bg3 rounded-lg' : ''}`}
-                draggable
-                onDragStart={(e) => handleTagDragStart(e, tag.id)}
-                onDragOver={(e) => handleTagDragOver(e, tag.id)}
-                onDragLeave={() => setDragOverTagId(null)}
-                onDrop={(e) => handleTagDrop(e, tag.id)}
-                onDragEnd={() => { setDraggedTagId(null); setDragOverTagId(null); }}
-              >
-                <button 
-                  className="w-2 h-2 rounded-full shrink-0 relative overflow-hidden cursor-pointer ring-1 ring-offset-1 ring-offset-bg ring-text-main hover:ring-2 transition-all" 
-                  title="Change color"
-                  style={{ backgroundColor: tag.color }}
-                  onClick={(e) => openColorPicker(e, tag.color, tag.id, 'tag')}
-                />
-                {editingTagId === tag.id ? (
-                  <input
-                    autoFocus
-                    type="text"
-                    value={editingTagName}
-                    onChange={e => setEditingTagName(e.target.value)}
-                    onBlur={() => handleRenameTag(tag.id)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') handleRenameTag(tag.id);
-                      if (e.key === 'Escape') setEditingTagId(null);
-                    }}
-                    onClick={e => e.stopPropagation()}
-                    className="flex-1 bg-transparent border-none outline-none text-[13.5px] text-text-main"
-                  />
-                ) : (
-                  <div 
-                    className="flex-1 truncate"
-                    style={{ color: tag.color }}
-                    onDoubleClick={(e) => {
-                      e.stopPropagation();
-                      setEditingTagId(tag.id);
-                      setEditingTagName(tag.name);
-                    }}
-                  >{tag.name}</div>
-                )}
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const deleteId = `tag-${tag.id}`;
-                    if (confirmDeleteId === deleteId) {
-                      handleDeleteTag(tag.id);
-                    } else {
-                      setConfirmDeleteId(deleteId);
-                    }
-                  }}
-                  className={`delete-btn p-1 rounded transition-colors opacity-100 shrink-0 ${confirmDeleteId === `tag-${tag.id}` ? 'text-red-500 bg-red-500/10' : 'text-text-faint hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100'}`}
-                  title={confirmDeleteId === `tag-${tag.id}` ? "Click again to confirm delete" : "Delete tag"}
-                >
-                  {confirmDeleteId === `tag-${tag.id}` ? (
-                    <span className="text-[9px] font-bold px-1">CONFIRM</span>
-                  ) : (
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  )}
-                </button>
-              </div>
-            ))}
-            {isCreatingTag ? (
-              <div className="flex flex-col gap-2 p-2 px-2.5 mt-1 bg-bg3 rounded-lg border border-border-strong">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: newTagColor }}></div>
-                  <input 
-                    autoFocus
-                    type="text" 
-                    value={newTagName}
-                    onChange={e => setNewTagName(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') handleCreateTag();
-                      if (e.key === 'Escape') setIsCreatingTag(false);
-                    }}
-                    placeholder="Tag name..."
-                    className="flex-1 bg-transparent border-none outline-none text-[13.5px] text-text-main placeholder:text-text-faint"
-                  />
-                </div>
-                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                  {folderColors.map(c => (
-                    <button
-                      key={c}
-                      onClick={() => setNewTagColor(c)}
-                      className={`w-3 h-3 shrink-0 rounded-full ${newTagColor === c ? 'ring-2 ring-offset-1 ring-offset-bg3 ring-text-main' : ''}`}
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
-                  <button 
-                    className="flex items-center justify-center w-3 h-3 shrink-0 rounded-full cursor-pointer border border-border-strong hover:ring-2 hover:ring-offset-1 hover:ring-offset-bg3 hover:ring-text-main transition-all ml-0.5 text-text-muted hover:text-text-main" 
-                    title="Custom color"
-                    onClick={(e) => openColorPicker(e, newTagColor, null, 'tag')}
-                  >
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                  </button>
-                </div>
-                <div className="flex justify-end gap-2 mt-1">
-                  <button onClick={() => setIsCreatingTag(false)} className="text-[11px] text-text-faint hover:text-text-main">Cancel</button>
-                  <button onClick={handleCreateTag} className="text-[11px] text-accent2 hover:text-accent font-medium">Create</button>
-                </div>
-              </div>
-            ) : (
-              <div 
-                className="flex items-center gap-2 p-2 px-2.5 rounded-lg cursor-pointer text-[13px] text-text-faint hover:bg-bg3 hover:text-text-muted transition-colors mt-1"
-                onClick={() => setIsCreatingTag(true)}
-              >
-                <span className="text-base leading-none">+</span> New tag
               </div>
             )}
           </div>
