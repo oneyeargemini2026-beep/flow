@@ -450,7 +450,7 @@ export const Sidebar = () => {
                 {item.id === 'today' ? (
                   <div className="ml-auto flex items-center justify-center w-5 h-5 relative">
                     <svg width="20" height="20" viewBox="0 0 20 20" className="transform -rotate-90">
-                      <circle cx="10" cy="10" r="7" fill="none" stroke="var(--bg-bg3)" strokeWidth="2" />
+                      <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" strokeWidth="2" className="text-border-strong" />
                       <circle 
                         cx="10" cy="10" r="7" 
                         fill="none" 

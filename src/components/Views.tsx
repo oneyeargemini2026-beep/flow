@@ -20,9 +20,10 @@ const CircularProgress = ({ completed, total }: { completed: number; total: numb
             cx="40"
             cy="40"
             r={radius}
-            stroke="var(--bg-bg3)"
+            stroke="currentColor"
             strokeWidth="6"
             fill="none"
+            className="text-border-strong"
           />
           <circle
             cx="40"
