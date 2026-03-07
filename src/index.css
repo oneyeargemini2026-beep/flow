@@ -1,0 +1,79 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+@theme {
+  --font-sans: 'Proxima Nova', 'DM Sans', system-ui, sans-serif;
+  --font-serif: 'DM Serif Display', serif;
+  --font-mono: 'DM Mono', monospace;
+
+  --color-bg: #0e0e10;
+  --color-bg2: #16161a;
+  --color-bg3: #1e1e24;
+  --color-bg4: #26262e;
+  --color-border-subtle: rgba(255,255,255,0.07);
+  --color-border-strong: rgba(255,255,255,0.12);
+  --color-text-main: #e8e8f0;
+  --color-text-muted: #8888a0;
+  --color-text-faint: #55556a;
+  --color-accent: #7c6af7;
+  --color-accent2: #a394ff;
+  --color-green: #3ecf8e;
+  --color-red: #f05d5d;
+  --color-orange: #f0a05d;
+  --color-yellow: #f0d45d;
+  --color-p1: #f05d5d;
+  --color-p2: #f0a05d;
+  --color-p3: #7c6af7;
+  --color-p4: #55556a;
+
+  --animate-disintegrate: disintegrate 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  @keyframes disintegrate {
+    0% {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+      filter: blur(0px);
+    }
+    100% {
+      opacity: 0;
+      transform: scale(0.9) translateY(10px);
+      filter: blur(4px);
+    }
+  }
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text-main);
+  font-family: var(--font-sans);
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  display: flex;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-bg4); border-radius: 2px; }
+
+/* Hide scrollbar for sidebar but allow scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Drag and Drop Preview */
+.task-dragging-preview {
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 0 2px var(--color-accent), 0 15px 35px -5px rgba(0, 0, 0, 0.6) !important;
+  transform: rotate(4deg) scale(1.03) !important;
+  background-color: var(--color-bg2) !important;
+  border-radius: 8px !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+}

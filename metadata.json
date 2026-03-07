@@ -1,0 +1,5 @@
+{
+  "name": "Flow Task Manager",
+  "description": "A beautiful, brutalist task manager with Eisenhower matrix, inbox processing, and focus mode.",
+  "requestFramePermissions": []
+}
