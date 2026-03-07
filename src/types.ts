@@ -1,10 +1,16 @@
-export type ViewType = 'today' | 'upcoming' | 'inbox' | 'dashboard' | 'matrix' | 'calendar' | 'archive' | 'trash' | 'history';
+export type ViewType = 'today' | 'upcoming' | 'inbox' | 'dashboard' | 'matrix' | 'calendar' | 'archive' | 'trash' | 'history' | 'tags';
 export type Priority = 'p1' | 'p2' | 'p3' | 'p4';
 
 export interface Subtask {
   id: string;
   title: string;
   completed: boolean;
+}
+
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
 }
 
 export interface Task {

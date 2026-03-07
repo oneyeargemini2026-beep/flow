@@ -4,7 +4,7 @@ import { Task } from '../types';
 import { getLocalDateString } from '../utils';
 
 export const AddTaskModal = () => {
-  const { isAddTaskOpen, setIsAddTaskOpen, setTasks, activeProject, folders } = useAppContext();
+  const { isAddTaskOpen, setIsAddTaskOpen, setTasks, activeProject, folders, tags: globalTags, setTags: setGlobalTags } = useAppContext();
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState('p2');
   const [dueDate, setDueDate] = useState(getLocalDateString());
@@ -12,11 +12,16 @@ export const AddTaskModal = () => {
   const [project, setProject] = useState('');
   const [section, setSection] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [isAddingTag, setIsAddingTag] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
 
   useEffect(() => {
     if (isAddTaskOpen) {
       setProject(activeProject || '');
       setSection('');
+      setTags([]);
+      setIsAddingTag(false);
+      setNewTagName('');
     }
   }, [isAddTaskOpen, activeProject]);
 
@@ -42,6 +47,28 @@ export const AddTaskModal = () => {
 
   const toggleTag = (tag: string) => {
     setTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+  };
+
+  const handleAddNewTag = () => {
+    const tagName = newTagName.trim();
+    if (tagName) {
+      // Add to global tags if not exists
+      if (!globalTags.find(t => t.name === tagName)) {
+        const newTag = {
+          id: `tag-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name: tagName,
+          color: '#7c6af7'
+        };
+        setGlobalTags(prev => [...prev, newTag]);
+      }
+      
+      // Select the tag
+      if (!tags.includes(tagName)) {
+        setTags(prev => [...prev, tagName]);
+      }
+    }
+    setNewTagName('');
+    setIsAddingTag(false);
   };
 
   return (
@@ -125,18 +152,40 @@ export const AddTaskModal = () => {
         <div className="mb-4">
           <label className="text-[11px] font-mono text-text-faint mb-1.5 block uppercase tracking-[0.08em]">Tags</label>
           <div className="flex flex-wrap gap-1.5">
-            {['work', 'health', 'personal', 'design', 'urgent', 'recurring'].map(tag => (
+            {globalTags.map(tag => (
               <div 
-                key={tag}
-                className={`px-2.5 py-[3px] rounded-full text-[11px] font-mono cursor-pointer border transition-colors ${tags.includes(tag) ? 'bg-accent/20 border-accent text-accent2' : 'border-border-strong text-text-muted hover:border-accent hover:text-accent2'}`}
-                onClick={() => toggleTag(tag)}
+                key={tag.id}
+                className={`px-2.5 py-[3px] rounded-full text-[11px] font-mono cursor-pointer border transition-colors ${tags.includes(tag.name) ? 'bg-accent/20 border-accent text-accent2' : 'border-border-strong text-text-muted hover:border-accent hover:text-accent2'}`}
+                onClick={() => toggleTag(tag.name)}
               >
-                {tag}
+                {tag.name}
               </div>
             ))}
-            <div className="px-2.5 py-[3px] rounded-full text-[11px] font-mono cursor-pointer border border-dashed border-border-strong text-text-faint hover:border-accent hover:text-accent2">
-              ＋ new tag
-            </div>
+            {isAddingTag ? (
+              <input
+                type="text"
+                autoFocus
+                className="px-2.5 py-[3px] rounded-full text-[11px] font-mono border border-accent text-text-main bg-transparent outline-none w-[100px]"
+                placeholder="Tag name..."
+                value={newTagName}
+                onChange={e => setNewTagName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleAddNewTag();
+                  if (e.key === 'Escape') setIsAddingTag(false);
+                }}
+                onBlur={() => {
+                   if (newTagName.trim()) handleAddNewTag();
+                   else setIsAddingTag(false);
+                }}
+              />
+            ) : (
+              <div 
+                className="px-2.5 py-[3px] rounded-full text-[11px] font-mono cursor-pointer border border-dashed border-border-strong text-text-faint hover:border-accent hover:text-accent2"
+                onClick={() => setIsAddingTag(true)}
+              >
+                ＋ new tag
+              </div>
+            )}
           </div>
         </div>
 

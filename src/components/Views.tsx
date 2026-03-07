@@ -60,10 +60,15 @@ export const TodayView = () => {
   };
 
   const overdue = sortTasks(baseTasks.filter(t => !t.completed && t.dueDate && t.dueDate < getLocalDateString()));
-  const today = sortTasks(baseTasks.filter(t => !t.completed && (!t.dueDate || t.dueDate >= getLocalDateString())));
-  const completed = sortTasks(baseTasks.filter(t => t.completed));
+  // Only show tasks strictly due today, or tasks created today if no due date (optional, but sticking to due date for now)
+  // Removing sortTasks for 'today' to allow manual reordering
+  const today = baseTasks.filter(t => !t.completed && (t.dueDate === getLocalDateString()));
   
-  const totalTasks = baseTasks.length;
+  // Filter completed tasks to only show those completed TODAY
+  const completed = sortTasks(baseTasks.filter(t => t.completed && t.completedDate && t.completedDate.startsWith(getLocalDateString())));
+  
+  // Total for daily progress = (Overdue + Due Today) + Completed Today
+  const totalTasks = overdue.length + today.length + completed.length;
   const completedCount = completed.length;
 
   const handleBrainDump = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -76,7 +81,8 @@ export const TodayView = () => {
         tags: [],
         completed: false,
         isInbox: false,
-        dueDate: getLocalDateString()
+        dueDate: getLocalDateString(),
+        project: activeProject
       }, ...prev]);
       e.currentTarget.value = '';
     }
@@ -125,7 +131,29 @@ export const TodayView = () => {
             return sections.map(section => {
               const sectionTasks = today.filter(t => (t.section || '') === section);
               return (
-                <div key={section || 'unsectioned'} className="mb-4">
+                <div 
+                  key={section || 'unsectioned'} 
+                  className="mb-4"
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const draggedId = e.dataTransfer.getData('text/plain');
+                    if (draggedId) {
+                      setTasks(prev => prev.map(t => {
+                        if (t.id === draggedId) {
+                          // Only update section if it's different
+                          if ((t.section || '') !== section) {
+                            return { ...t, section: section || undefined };
+                          }
+                        }
+                        return t;
+                      }));
+                    }
+                  }}
+                >
                   {section && (
                     <div className="font-serif text-sm text-text-muted mb-2 mt-4">{section}</div>
                   )}
@@ -580,16 +608,16 @@ export const ArchiveView = () => {
               {archives.filter(a => a.quarter === q).sort((a, b) => a.name.localeCompare(b.name)).map(a => (
                 <div 
                   key={a.id} 
-                  className={`bg-bg2 border border-border-subtle rounded-[10px] p-4 transition-all ${expandedArchiveId === a.id ? 'row-span-2 col-span-full md:col-span-2 lg:col-span-3' : ''}`}
+                  className={`bg-bg2 border border-border-subtle rounded-[10px] p-4 transition-all cursor-pointer hover:border-accent/50 ${expandedArchiveId === a.id ? 'row-span-2 col-span-full md:col-span-2 lg:col-span-3 ring-1 ring-accent' : ''}`}
                   onClick={() => {
                     if (!editingArchiveId) setExpandedArchiveId(expandedArchiveId === a.id ? null : a.id);
                   }}
                 >
-                  <div className="flex justify-between items-start mb-1">
+                  <div className="flex justify-between items-start mb-2">
                     {editingArchiveId === a.id && editingField === 'name' ? (
                       <input
                         autoFocus
-                        className="font-serif text-[15px] bg-transparent border-none outline-none text-text-main w-full border-b border-accent"
+                        className="font-serif text-[18px] bg-transparent border-none outline-none text-text-main w-full border-b border-accent"
                         value={editValue}
                         onChange={e => setEditValue(e.target.value)}
                         onBlur={() => handleSaveArchive(a.id, 'name')}
@@ -598,7 +626,7 @@ export const ArchiveView = () => {
                       />
                     ) : (
                       <div 
-                        className="font-serif text-[15px] cursor-pointer hover:text-accent transition-colors"
+                        className="font-serif text-[18px] font-medium text-text-main hover:text-accent transition-colors"
                         onClick={(e) => {
                           e.stopPropagation();
                           setEditingArchiveId(a.id);
@@ -609,9 +637,12 @@ export const ArchiveView = () => {
                         {a.name}
                       </div>
                     )}
+                    <div className="text-xs font-mono text-text-faint bg-bg3 px-2 py-1 rounded-md">
+                      {a.tasks} tasks
+                    </div>
                   </div>
-                  <div className="text-xs text-text-faint mb-2">{a.tasks} tasks · {a.completed} completed</div>
-                  <div className="flex flex-wrap gap-1 mb-2">
+                  
+                  <div className="flex flex-wrap gap-1 mb-3">
                     {editingArchiveId === a.id && editingField === 'tags' ? (
                       <input
                         autoFocus
@@ -626,10 +657,10 @@ export const ArchiveView = () => {
                     ) : (
                       <>
                         {a.tags.map(t => (
-                          <span key={t} className="text-[10px] px-1.5 py-0.5 rounded border border-border-strong text-text-faint">{t}</span>
+                          <span key={t} className="text-[10px] px-1.5 py-0.5 rounded border border-border-strong text-text-faint bg-bg3">{t}</span>
                         ))}
                         <span 
-                          className="text-[10px] px-1.5 py-0.5 rounded border border-dashed border-border-strong text-text-faint cursor-pointer hover:text-text-main"
+                          className="text-[10px] px-1.5 py-0.5 rounded border border-dashed border-border-strong text-text-faint cursor-pointer hover:text-text-main hover:border-text-muted transition-colors"
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingArchiveId(a.id);
@@ -637,37 +668,196 @@ export const ArchiveView = () => {
                             setEditValue(a.tags.join(', '));
                           }}
                         >
-                          +
+                          + Tag
                         </span>
                       </>
                     )}
                   </div>
                   
                   {expandedArchiveId === a.id && (
-                    <div className="mt-4 pt-4 border-t border-border-subtle" onClick={e => e.stopPropagation()}>
-                      <h4 className="text-xs font-medium text-text-muted mb-2 uppercase tracking-wider">Archived Items</h4>
+                    <div className="mt-4 pt-4 border-t border-border-subtle animate-fadeIn" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-xs font-medium text-text-muted uppercase tracking-wider">Archived Items</h4>
+                        <span className="text-[10px] text-text-faint">{a.completed} completed</span>
+                      </div>
+                      
                       {a.items && a.items.length > 0 ? (
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                           {a.items.map(item => (
-                            <div key={item.id} className="flex items-center gap-2 text-sm text-text-main">
-                              <span className="text-accent">✓</span>
-                              <span className="line-through opacity-70">{item.title}</span>
+                            <div key={item.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-bg3 transition-colors group">
+                              <div className="mt-0.5 text-accent">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm text-text-main line-through opacity-70 group-hover:opacity-100 transition-opacity truncate">{item.title}</div>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-[10px] text-text-faint">{item.project || 'No Project'}</span>
+                                  {item.completedDate && (
+                                    <span className="text-[10px] text-text-faint">• {new Date(item.completedDate).toLocaleDateString()}</span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="text-text-faint text-xs italic opacity-50">No items in this archive.</div>
+                        <div className="text-text-faint text-xs italic opacity-50 py-2 text-center">No items in this archive.</div>
                       )}
+                    </div>
+                  )}
+                  
+                  {expandedArchiveId !== a.id && (
+                    <div className="text-[10px] text-text-faint mt-2 flex items-center gap-1 opacity-60">
+                      <span>Click to view details</span>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </div>
                   )}
                 </div>
               ))}
               {archives.filter(a => a.quarter === q).length === 0 && (
-                <div className="text-text-faint text-xs italic opacity-50">No archives in {q.toUpperCase()}</div>
+                <div className="text-text-faint text-xs italic opacity-50 p-4 border border-dashed border-border-subtle rounded-lg text-center">No archives in {q.toUpperCase()}</div>
               )}
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+};
+
+export const TagsView = () => {
+  const { tasks, setTasks, tags, setTags } = useAppContext();
+  const [isAddingTag, setIsAddingTag] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#7c6af7');
+
+  const handleCreateTag = () => {
+    if (!newTagName.trim()) return;
+    
+    const newTag = {
+      id: `tag-${Date.now()}`,
+      name: newTagName.trim(),
+      color: newTagColor
+    };
+    
+    setTags(prev => [...prev, newTag]);
+    setNewTagName('');
+    setIsAddingTag(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetTag: string) => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData('text/plain');
+    if (taskId) {
+      setTasks(prev => prev.map(t => {
+        if (t.id === taskId) {
+          // Add tag if not present
+          if (!t.tags.includes(targetTag)) {
+            return { ...t, tags: [...t.tags, targetTag] };
+          }
+        }
+        return t;
+      }));
+    }
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto p-3 px-3.5 md:p-5 md:px-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-start">
+        {tags.map(tag => {
+          const tagTasks = tasks
+            .filter(t => !t.deleted && !t.completed && t.tags.includes(tag.name))
+            .sort((a, b) => a.title.localeCompare(b.title));
+
+          return (
+            <div 
+              key={tag.id} 
+              className="bg-bg2 rounded-xl border border-border-subtle flex flex-col max-h-[400px]"
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+              }}
+              onDrop={(e) => handleDrop(e, tag.name)}
+            >
+              <div 
+                className="p-3 border-b border-border-subtle flex items-center justify-between shrink-0 rounded-t-xl bg-bg3/30" 
+                style={{ borderTop: `3px solid ${tag.color}` }}
+              >
+                <div className="font-medium text-sm flex items-center gap-2" style={{ color: tag.color }}>
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color }}></span>
+                  {tag.name}
+                </div>
+                <div className="text-xs text-text-faint bg-bg3 px-2 py-0.5 rounded-full font-mono">
+                  {tagTasks.length}
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto p-2 custom-scrollbar min-h-[100px]">
+                {tagTasks.length > 0 ? (
+                  tagTasks.map(t => (
+                    <TaskItem key={t.id} task={t} />
+                  ))
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-text-faint text-xs italic opacity-50 py-8">
+                    <span>Drag tasks here</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Add Tag Card */}
+        <div className="bg-bg2 rounded-xl border border-dashed border-border-strong flex flex-col items-center justify-center p-6 min-h-[150px] hover:bg-bg3 transition-colors cursor-pointer group" onClick={() => setIsAddingTag(true)}>
+          {!isAddingTag ? (
+            <>
+              <div className="w-10 h-10 rounded-full bg-bg3 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                <span className="text-xl text-text-muted">+</span>
+              </div>
+              <span className="text-sm font-medium text-text-muted">Add New Tag</span>
+            </>
+          ) : (
+            <div className="w-full" onClick={e => e.stopPropagation()}>
+              <input 
+                autoFocus
+                className="w-full bg-bg3 border border-border-strong rounded px-3 py-2 text-sm text-text-main outline-none focus:border-accent mb-3"
+                placeholder="Tag Name"
+                value={newTagName}
+                onChange={e => setNewTagName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleCreateTag();
+                  if (e.key === 'Escape') setIsAddingTag(false);
+                }}
+              />
+              <div className="flex items-center justify-between">
+                <div className="relative group/color">
+                  <div 
+                    className="w-6 h-6 rounded-full border border-border-strong cursor-pointer"
+                    style={{ backgroundColor: newTagColor }}
+                  ></div>
+                  <div className="absolute top-full left-0 mt-2 z-50 hidden group-hover/color:block">
+                    <div className="bg-bg border border-border-strong rounded-lg p-2 shadow-xl">
+                      <HexColorPicker color={newTagColor} onChange={setNewTagColor} />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setIsAddingTag(false)}
+                    className="text-xs text-text-muted hover:text-text-main px-2 py-1"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleCreateTag}
+                    className="text-xs bg-accent text-white px-3 py-1 rounded hover:bg-accent2"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1036,11 +1226,14 @@ export const CalendarView = () => {
 };
 
 export const HistoryView = () => {
-  const { tasks } = useAppContext();
+  const { tasks, archives } = useAppContext();
   const [currentDate, setCurrentDate] = useState(new Date());
   
+  // Combine active tasks and archived tasks for history
+  const allTasks = [...tasks, ...archives.flatMap(a => a.items || [])];
+  
   // Calculate Stats
-  const completedTasks = tasks.filter(t => t.completed && t.completedDate);
+  const completedTasks = allTasks.filter(t => t.completed && t.completedDate);
   
   // 1. Streak Calculation
   const getStreak = () => {
@@ -1081,22 +1274,61 @@ export const HistoryView = () => {
 
   // 2. Overview & Goals (Monthly)
   const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+  const todayStr = new Date().toISOString().split('T')[0];
   
-  const monthTasks = tasks.filter(t => {
+  // Filter tasks relevant to the selected month
+  const monthTasks = allTasks.filter(t => {
+    // Task is due in this month
     if (t.dueDate && t.dueDate.startsWith(currentMonthStr)) return true;
+    // Task was completed in this month (even if due earlier/later)
     if (t.completed && t.completedDate && t.completedDate.startsWith(currentMonthStr)) return true;
     return false;
   });
 
-  const monthCompleted = monthTasks.filter(t => t.completed).length;
-  const monthTotal = monthTasks.length;
-  const monthFailed = monthTasks.filter(t => !t.completed && t.dueDate && t.dueDate < new Date().toISOString().split('T')[0]).length;
-  const monthInProgress = monthTotal - monthCompleted - monthFailed;
+  // Completed: Completed in this month
+  const monthCompleted = monthTasks.filter(t => t.completed && t.completedDate && t.completedDate.startsWith(currentMonthStr)).length;
+  
+  // Failed: Due in this month AND (not completed OR completed AFTER this month)
+  // Also count overdue tasks if viewing the current month
+  const monthFailed = monthTasks.filter(t => {
+    if (!t.dueDate || !t.dueDate.startsWith(currentMonthStr)) return false; // Not due this month
+    
+    if (!t.completed) {
+      // If viewing past month, any uncompleted task due in that month is failed
+      if (currentMonthStr < todayStr.slice(0, 7)) return true;
+      // If viewing current month, task is failed if due date < today
+      if (currentMonthStr === todayStr.slice(0, 7) && t.dueDate < todayStr) return true;
+      return false; 
+    } else {
+      // Completed, but was it completed late (after this month)?
+      // If completed in a later month, it counts as failed for THIS month's goals
+      return t.completedDate! > t.dueDate && !t.completedDate!.startsWith(currentMonthStr);
+    }
+  }).length;
+
+  // Total relevant tasks for the month (Completed + Failed + Pending/InProgress)
+  // InProgress: Due in this month, not completed, but NOT yet overdue (future due date in this month)
+  const monthInProgress = monthTasks.filter(t => {
+    if (!t.dueDate || !t.dueDate.startsWith(currentMonthStr)) return false;
+    if (t.completed) return false; // Already handled in completed (or failed if late)
+    // It is pending. Is it overdue?
+    if (currentMonthStr < todayStr.slice(0, 7)) return false; // Past month pending = failed
+    if (currentMonthStr === todayStr.slice(0, 7) && t.dueDate < todayStr) return false; // Current month overdue = failed
+    return true; // Future due date in this month
+  }).length;
+
+  // Total for consistency calculation: Completed + Failed + InProgress
+  // Note: monthTasks might include tasks completed this month but due in previous months. 
+  // Those count towards "Completed" but maybe not "Total" for consistency if we strictly want "Tasks DUE this month"?
+  // Usually "Consistency" is (Completed / (Completed + Failed)). InProgress doesn't count against you yet.
+  
+  const consistencyBase = monthCompleted + monthFailed;
+  const consistency = consistencyBase > 0 ? Math.round((monthCompleted / consistencyBase) * 100) : 0;
 
   const overview = { 
     good: monthCompleted, 
     bad: monthFailed, 
-    consistency: monthTotal > 0 ? Math.round((monthCompleted / monthTotal) * 100) : 0 
+    consistency: consistency
   };
   
   const goals = { 
@@ -1152,7 +1384,7 @@ export const HistoryView = () => {
             const isFuture = new Date(dateStr) > new Date();
             
             // Check status for this day
-            const dayTasks = tasks.filter(t => (t.dueDate === dateStr) || (t.completed && t.completedDate?.startsWith(dateStr)));
+            const dayTasks = allTasks.filter(t => (t.dueDate === dateStr) || (t.completed && t.completedDate?.startsWith(dateStr)));
             const dayCompleted = dayTasks.filter(t => t.completed).length;
             const dayTotal = dayTasks.length;
             

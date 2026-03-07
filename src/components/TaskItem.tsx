@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Task, Priority } from '../types';
 import { useAppContext } from '../store';
+import { getLocalISOString } from '../utils';
 
 const priorityColors: Record<Priority, string> = {
   p1: 'text-p1 bg-p1/10',
@@ -10,12 +11,30 @@ const priorityColors: Record<Priority, string> = {
 };
 
 export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
-  const { tasks, setTasks, folders } = useAppContext();
+  const { tasks, setTasks, folders, duplicateTask, tags, setTags } = useAppContext();
   const [expanded, setExpanded] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleAddTag = (tagName: string) => {
+    if (!tagName) return;
+    
+    // Check if tag exists in global tags
+    const existingTag = tags.find(t => t.name === tagName);
+    if (!existingTag) {
+      // Create new tag in global state
+      const newTag = {
+        id: `tag-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: tagName,
+        color: '#7c6af7' // Default color
+      };
+      setTags(prev => [...prev, newTag]);
+    }
+
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, tags: [...t.tags, tagName] } : t));
+  };
 
   const toggleCheck = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -25,7 +44,7 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
         return { 
           ...t, 
           completed: isCompleted,
-          completedDate: isCompleted ? new Date().toISOString() : undefined
+          completedDate: isCompleted ? getLocalISOString() : undefined
         };
       }
       return t;
@@ -105,7 +124,29 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
         
         const newTasks = [...prev];
         const [draggedTask] = newTasks.splice(draggedIndex, 1);
-        newTasks.splice(targetIndex, 0, draggedTask);
+        
+        // If we are in a project view, sync the section to the target task's section
+        // This allows dragging between sections to work as expected
+        const updatedDraggedTask = { 
+          ...draggedTask, 
+          section: task.section 
+        };
+        
+        // Adjust target index if needed (if we removed an item before it)
+        // Actually splice handles the removal, so targetIndex might refer to a different item if we don't adjust?
+        // No, findIndex was on 'prev'. 
+        // If draggedIndex < targetIndex, the item at targetIndex in 'prev' is now at targetIndex-1 in 'newTasks'.
+        // So we should insert at targetIndex-1?
+        // Let's use the logic: we want to insert *before* the target task (or after?).
+        // Usually drop on top half = before, bottom half = after.
+        // But here we just drop on the item. Let's insert *before* for simplicity.
+        
+        let insertIndex = targetIndex;
+        if (draggedIndex < targetIndex) {
+          insertIndex -= 1;
+        }
+        
+        newTasks.splice(insertIndex, 0, updatedDraggedTask);
         return newTasks;
       });
     }
@@ -224,13 +265,19 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
                     if (e.key === 'Enter') {
                       const val = e.currentTarget.value.trim();
                       if (val) {
-                        setTasks(prev => prev.map(t => t.id === task.id ? { ...t, tags: [...t.tags, val] } : t));
+                        handleAddTag(val);
                       }
                       setIsAddingTag(false);
                     }
                     if (e.key === 'Escape') setIsAddingTag(false);
                   }}
-                  onBlur={() => setIsAddingTag(false)}
+                  onBlur={(e) => {
+                    const val = e.target.value.trim();
+                    if (val) {
+                      handleAddTag(val);
+                    }
+                    setIsAddingTag(false);
+                  }}
                   onClick={e => e.stopPropagation()}
                 />
               ) : (
@@ -242,14 +289,14 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
                     if (val === '__new__') {
                       setIsAddingTag(true);
                     } else if (val) {
-                      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, tags: [...t.tags, val] } : t));
+                      handleAddTag(val);
                     }
                   }}
                   onClick={e => e.stopPropagation()}
                 >
                   <option value="">+ Tag</option>
-                  {Array.from(new Set(tasks.flatMap(t => t.tags))).filter(t => !task.tags.includes(t)).map(tag => (
-                    <option key={tag} value={tag}>{tag}</option>
+                  {tags.filter(t => !task.tags.includes(t.name)).map(tag => (
+                    <option key={tag.id} value={tag.name}>{tag.name}</option>
                   ))}
                   <option value="__new__">+ New Tag...</option>
                 </select>
@@ -290,6 +337,16 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
         </div>
       )}
       <div className={`flex items-center gap-2 shrink-0 mt-0.5 transition-opacity ${expanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            duplicateTask(task.id);
+          }}
+          className="text-text-faint hover:text-text-main p-1 rounded hover:bg-bg3 transition-colors"
+          title="Duplicate task"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+        </button>
         <button 
           onClick={(e) => {
             e.stopPropagation();

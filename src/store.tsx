@@ -1,9 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Task, Folder, Archive, ViewType, MatrixConfig } from './types';
+import { Task, Folder, Archive, ViewType, MatrixConfig, Tag } from './types';
+import { getLocalDateString } from './utils';
 
 const initialFolders: Folder[] = [
   { id: 'f1', name: 'Work', color: '#7c6af7', open: true, projects: ['Q2 Launch', 'Hiring'] },
   { id: 'f2', name: 'Personal', color: '#3ecf8e', open: false, projects: ['Side Project'] }
+];
+
+const initialTags: Tag[] = [
+  { id: 't1', name: 'Urgent', color: '#ff5c5c' },
+  { id: 't2', name: 'Home', color: '#3ecf8e' }
 ];
 
 const initialTasks: Task[] = [];
@@ -28,6 +34,8 @@ interface AppContextType {
   setFolders: React.Dispatch<React.SetStateAction<Folder[]>>;
   archives: Archive[];
   setArchives: React.Dispatch<React.SetStateAction<Archive[]>>;
+  tags: Tag[];
+  setTags: React.Dispatch<React.SetStateAction<Tag[]>>;
   matrixConfig: MatrixConfig;
   setMatrixConfig: React.Dispatch<React.SetStateAction<MatrixConfig>>;
   isFocusOpen: boolean;
@@ -40,6 +48,7 @@ interface AppContextType {
   setIsSidebarOpen: (v: boolean) => void;
   moveProject: (projectName: string, fromFolderId: string, toFolderId: string, targetIndex?: number) => void;
   renameProject: (oldName: string, newName: string) => void;
+  duplicateTask: (taskId: string) => void;
 }
 
 export const AppContext = createContext<AppContextType | null>(null);
@@ -67,6 +76,16 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
       return initialFolders;
     }
   });
+
+  const [tags, setTags] = useState<Tag[]>(() => {
+    try {
+      const saved = localStorage.getItem('tags');
+      return saved ? JSON.parse(saved) : initialTags;
+    } catch (e) {
+      console.error('Failed to load tags from localStorage', e);
+      return initialTags;
+    }
+  });
   
   const [archives, setArchives] = useState<Archive[]>(() => {
     try {
@@ -88,6 +107,68 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     }
   });
 
+  // Auto-archive logic
+  useEffect(() => {
+    const today = getLocalDateString();
+    const tasksToArchive = tasks.filter(t => {
+      if (!t.completed || !t.completedDate) return false;
+      // Compare only the date part (YYYY-MM-DD)
+      const taskDate = t.completedDate.split('T')[0];
+      return taskDate < today; // Archive if completed BEFORE today
+    });
+
+    if (tasksToArchive.length > 0) {
+      setArchives(prevArchives => {
+        const newArchives = [...prevArchives];
+        
+        tasksToArchive.forEach(task => {
+          const date = new Date(task.completedDate!);
+          const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+          const archiveName = monthYear;
+          
+          let archive = newArchives.find(a => a.name === archiveName);
+          
+          if (!archive) {
+            const month = date.getMonth() + 1;
+            let quarter: 'q1' | 'q2' | 'q3' | 'q4' = 'q1';
+            if (month > 3) quarter = 'q2';
+            if (month > 6) quarter = 'q3';
+            if (month > 9) quarter = 'q4';
+
+            archive = {
+              id: `arch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              name: archiveName,
+              color: '#8888a0',
+              start: task.completedDate!,
+              end: task.completedDate!,
+              tasks: 0,
+              completed: 0,
+              tags: [],
+              quarter: quarter,
+              items: []
+            };
+            newArchives.push(archive);
+          }
+          
+          if (!archive.items) archive.items = [];
+          // Check if task is already in archive to prevent duplicates (though filter should handle this)
+          if (!archive.items.find(t => t.id === task.id)) {
+             archive.items.push(task);
+             archive.tasks++;
+             archive.completed++;
+             
+             if (task.completedDate! < archive.start) archive.start = task.completedDate!;
+             if (task.completedDate! > archive.end) archive.end = task.completedDate!;
+          }
+        });
+        
+        return newArchives;
+      });
+
+      setTasks(prevTasks => prevTasks.filter(t => !tasksToArchive.find(a => a.id === t.id)));
+    }
+  }, [tasks]); // Only depend on tasks to avoid circular dependency with archives
+
   useEffect(() => {
     try {
       localStorage.setItem('tasks', JSON.stringify(tasks));
@@ -103,6 +184,14 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
       console.error('Failed to save folders to localStorage', e);
     }
   }, [folders]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tags', JSON.stringify(tags));
+    } catch (e) {
+      console.error('Failed to save tags to localStorage', e);
+    }
+  }, [tags]);
 
   useEffect(() => {
     try {
@@ -169,6 +258,28 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     }
   };
 
+  const duplicateTask = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const newTask: Task = {
+      ...task,
+      id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      title: `${task.title} (Copy)`,
+      completed: false,
+      completedDate: undefined,
+      // Keep other properties like priority, tags, project, etc.
+    };
+
+    setTasks(prev => {
+      const index = prev.findIndex(t => t.id === taskId);
+      if (index === -1) return [...prev, newTask];
+      const newTasks = [...prev];
+      newTasks.splice(index + 1, 0, newTask);
+      return newTasks;
+    });
+  };
+
   return (
     <AppContext.Provider value={{
       currentView, setCurrentView,
@@ -176,12 +287,14 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
       tasks, setTasks,
       folders, setFolders,
       archives, setArchives,
+      tags, setTags,
       matrixConfig, setMatrixConfig,
       isFocusOpen, setIsFocusOpen,
       isAddTaskOpen, setIsAddTaskOpen,
       isProcessInboxOpen, setIsProcessInboxOpen,
       isSidebarOpen, setIsSidebarOpen,
-      moveProject, renameProject
+      moveProject, renameProject,
+      duplicateTask
     }}>
       {children}
     </AppContext.Provider>
