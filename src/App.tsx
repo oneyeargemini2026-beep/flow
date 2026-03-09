@@ -12,7 +12,25 @@ const MainContent = () => {
     if ('Notification' in window && Notification.permission !== 'granted') {
       Notification.requestPermission();
     }
+
+    if ('serviceWorker' in navigator) {
+      const handleMessage = (event: MessageEvent) => {
+        if (event.data && event.data.type === 'PLAY_BELL') {
+          playBell();
+        }
+      };
+      navigator.serviceWorker.addEventListener('message', handleMessage);
+      
+      return () => {
+        navigator.serviceWorker.removeEventListener('message', handleMessage);
+      };
+    }
   }, []);
+
+  const playBell = () => {
+    const audio = new Audio('https://actions.google.com/sounds/v1/alarms/ding_ding_ding.ogg');
+    audio.play().catch(e => console.error('Audio play failed:', e));
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -26,10 +44,25 @@ const MainContent = () => {
         if (!task.completed && !task.deleted && task.dueDate === todayStr && task.dueTime === currentTime) {
           const key = `${task.id}-${currentTime}`;
           if (!notifiedRef.current.has(key)) {
-            new Notification(`Task Due: ${task.title}`, {
-              body: `It's time for ${task.title}`,
-            });
             notifiedRef.current.add(key);
+            
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+              navigator.serviceWorker.ready.then(registration => {
+                registration.showNotification(`Task Due: ${task.title}`, {
+                  body: `It's time for ${task.title}`,
+                  icon: '/icon.svg',
+                  // @ts-ignore
+                  vibrate: [200, 100, 200]
+                });
+                playBell();
+              });
+            } else {
+              new Notification(`Task Due: ${task.title}`, {
+                body: `It's time for ${task.title}`,
+                icon: '/icon.svg'
+              });
+              playBell();
+            }
           }
         }
       });

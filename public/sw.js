@@ -65,3 +65,53 @@ self.addEventListener('activate', event => {
     }).then(() => self.clients.claim()) // Take control of all clients immediately
   );
 });
+
+self.addEventListener('push', function(event) {
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = { title: 'Task Reminder', body: event.data.text() };
+    }
+  } else {
+    data = { title: 'Task Reminder', body: 'You have a pending task!' };
+  }
+
+  const options = {
+    body: data.body || 'You have a pending task!',
+    icon: '/icon.svg',
+    badge: '/icon.svg',
+    vibrate: [200, 100, 200, 100, 200, 100, 200],
+    data: {
+      dateOfArrival: Date.now(),
+      primaryKey: '1'
+    }
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Task Reminder', options)
+  );
+  
+  // Send message to clients to play sound
+  event.waitUntil(
+    self.clients.matchAll().then(clients => {
+      clients.forEach(client => {
+        client.postMessage({ type: 'PLAY_BELL' });
+      });
+    })
+  );
+});
+
+self.addEventListener('notificationclick', function(event) {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window' }).then(windowClients => {
+      if (windowClients.length > 0) {
+        windowClients[0].focus();
+      } else {
+        self.clients.openWindow('/');
+      }
+    })
+  );
+});
