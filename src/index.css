@@ -77,3 +77,61 @@ body {
   opacity: 1 !important;
   pointer-events: none !important;
 }
+
+/* Checkbox Animation */
+.checkbox-circle {
+  transition: transform 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+}
+
+.checkbox-circle:active {
+  transform: scale(0.8);
+}
+
+.checkbox-circle.is-checked {
+  animation: bounce-circle 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes bounce-circle {
+  0% { transform: scale(0.8); }
+  60% { transform: scale(1); }
+  80% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.checkmark-icon {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: draw-check 0.25s cubic-bezier(0.65, 0, 0.45, 1) 0.1s forwards;
+}
+
+@keyframes draw-check {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.task-text {
+  transition: color 0.3s ease, opacity 0.3s ease;
+  position: relative;
+  display: inline-block;
+}
+
+.task-text::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 0%;
+  height: 1px;
+  background-color: currentColor;
+  transition: width 0.3s cubic-bezier(0.65, 0, 0.45, 1);
+}
+
+.task-text.is-completed::after {
+  width: 100%;
+}
+
+.task-text.is-completed {
+  opacity: 0.6;
+  color: var(--color-text-faint);
+}

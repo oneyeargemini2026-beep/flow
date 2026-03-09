@@ -136,17 +136,20 @@ export const Sidebar = () => {
   const circumference = 2 * Math.PI * 7; // r=7
   const strokeDashoffset = circumference * (1 - progressPercentage);
 
-  const navItems: { id: ViewType; icon: string; label: string; badge?: number }[] = [
+  const topNavItems: { id: ViewType; icon: string; label: string; badge?: number }[] = [
     { id: 'today', icon: '☀️', label: 'Today' },
     { id: 'upcoming', icon: '📅', label: 'Upcoming' },
     { id: 'inbox', icon: '📥', label: 'Inbox', badge: tasks.filter(t => t.isInbox && !t.deleted && !t.completed).length },
     { id: 'goals', icon: '🎯', label: 'Goals' },
-    { id: 'dashboard', icon: '⬡', label: 'Dashboard' },
     { id: 'matrix', icon: '⊞', label: 'Matrix' },
     { id: 'calendar', icon: '◫', label: 'Calendar' },
-    { id: 'history', icon: '📜', label: 'History' },
     { id: 'archive', icon: '🗄', label: 'Archive' },
     { id: 'tags', icon: '🏷️', label: 'Tags' },
+  ];
+
+  const bottomNavItems: { id: ViewType; icon: string; label: string; badge?: number }[] = [
+    { id: 'dashboard', icon: '⬡', label: 'Dashboard' },
+    { id: 'history', icon: '📜', label: 'History' },
     { id: 'trash', icon: '🗑️', label: 'Trash' },
   ];
 
@@ -289,10 +292,12 @@ export const Sidebar = () => {
   };
 
   const handleCreateProject = (folderId: string) => {
-    if (!newProjectName.trim()) return;
+    const trimmedName = newProjectName.trim();
+    if (!trimmedName) return;
     setFolders(prev => prev.map(f => {
       if (f.id === folderId) {
-        return { ...f, projects: [...f.projects, newProjectName.trim()] };
+        if (f.projects.includes(trimmedName)) return f;
+        return { ...f, projects: [...f.projects, trimmedName] };
       }
       return f;
     }));
@@ -301,10 +306,16 @@ export const Sidebar = () => {
   };
 
   const handleCreateTag = () => {
-    if (!newTagName.trim()) return;
+    const trimmedName = newTagName.trim();
+    if (!trimmedName) return;
+    if (tags.some(t => t.name === trimmedName)) {
+      setNewTagName('');
+      setIsCreatingTag(false);
+      return;
+    }
     const newTag = {
       id: `tag-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name: newTagName.trim(),
+      name: trimmedName,
       color: newTagColor
     };
     setTags(prev => [...prev, newTag]);
@@ -440,7 +451,7 @@ export const Sidebar = () => {
         <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar">
           <div className="p-3 pb-1 shrink-0">
             <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-faint px-2 pb-2">Views</div>
-            {navItems.map(item => (
+            {topNavItems.map(item => (
               <div 
                 key={item.id}
                 className={`flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] transition-colors relative shrink-0 mb-0 ${currentView === item.id && !activeProject ? 'bg-accent/15 text-accent2' : 'text-text-muted hover:bg-bg3 hover:text-text-main'}`}
@@ -559,12 +570,12 @@ export const Sidebar = () => {
                 </div>
                 {folder.open && (
                   <div className="flex pl-7 py-1 flex-col gap-0.5">
-                    {folder.projects.map(proj => {
+                    {folder.projects.map((proj, index) => {
                         const pendingCount = tasks.filter(t => t.project === proj && !t.completed && !t.deleted).length;
                         const projDeleteId = `${folder.id}-${proj}`;
                         return (
                       <div 
-                        key={proj}
+                        key={`${folder.id}-${proj}-${index}`}
                         draggable
                         onDragStart={(e) => handleProjectDragStart(e, proj, folder.id)}
                         onDragOver={(e) => handleProjectDragOver(e, proj)}
@@ -674,6 +685,24 @@ export const Sidebar = () => {
                 <span className="text-base leading-none">+</span> New folder
               </div>
             )}
+          </div>
+
+          <div className="p-3 pt-1 shrink-0 mt-2 border-t border-border-subtle">
+            {bottomNavItems.map(item => (
+              <div 
+                key={item.id}
+                className={`flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] transition-colors relative shrink-0 mb-0 ${currentView === item.id && !activeProject ? 'bg-accent/15 text-accent2' : 'text-text-muted hover:bg-bg3 hover:text-text-main'}`}
+                onClick={() => handleNavClick(item.id)}
+              >
+                <span className="w-4 text-center text-sm">{item.icon}</span>
+                <span>{item.label}</span>
+                {item.badge ? (
+                  <span className={`ml-auto font-mono text-[10px] px-1.5 py-[1px] rounded-full ${currentView === item.id && !activeProject ? 'bg-accent/25 text-accent2' : 'bg-bg4 text-text-faint'}`}>
+                    {item.badge}
+                  </span>
+                ) : null}
+              </div>
+            ))}
           </div>
         </div>
 

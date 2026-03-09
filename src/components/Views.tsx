@@ -912,8 +912,8 @@ export const ArchiveView = () => {
                       />
                     ) : (
                       <>
-                        {a.tags.map(t => (
-                          <span key={t} className="text-[10px] px-1.5 py-0.5 rounded border border-border-strong text-text-faint bg-bg3">{t}</span>
+                        {a.tags.map((t, index) => (
+                          <span key={`${t}-${index}`} className="text-[10px] px-1.5 py-0.5 rounded border border-border-strong text-text-faint bg-bg3">{t}</span>
                         ))}
                         <span 
                           className="text-[10px] px-1.5 py-0.5 rounded border border-dashed border-border-strong text-text-faint cursor-pointer hover:text-text-main hover:border-text-muted transition-colors"
@@ -1009,30 +1009,27 @@ export const FolderView = () => {
           No projects in this folder.
         </div>
       ) : (
-        folderProjects.map(project => {
+        folderProjects.map((project, index) => {
           const projectTasks = folderTasks.filter(t => t.project === project);
-          if (projectTasks.length === 0) return null;
           
           return (
-            <div key={project} className="mb-8">
+            <div key={`${project}-${index}`} className="mb-8">
               <div className="flex items-center gap-2 mb-3 border-b border-border-subtle pb-1">
                 <h3 className="font-mono text-xs uppercase tracking-wider text-text-muted">{project}</h3>
                 <span className="text-[10px] text-text-faint">{projectTasks.length}</span>
               </div>
               <div className="flex flex-col">
-                {projectTasks.map(t => (
-                  <TaskItem key={t.id} task={t} />
-                ))}
+                {projectTasks.length > 0 ? (
+                  projectTasks.map(t => (
+                    <TaskItem key={t.id} task={t} />
+                  ))
+                ) : (
+                  <div className="text-xs text-text-faint italic py-2">No tasks in this project.</div>
+                )}
               </div>
             </div>
           );
         })
-      )}
-      
-      {folderTasks.length === 0 && folderProjects.length > 0 && (
-        <div className="text-center py-10 text-text-faint italic">
-          No tasks in this folder.
-        </div>
       )}
     </div>
   );

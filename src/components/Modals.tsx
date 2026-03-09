@@ -130,8 +130,12 @@ export const AddTaskModal = () => {
               onChange={e => setProject(e.target.value)}
             >
               <option value="">No Project</option>
-              {folders.flatMap(f => f.projects).map(p => (
-                <option key={p} value={p}>{p}</option>
+              {folders.map(f => (
+                <optgroup key={f.id} label={f.name}>
+                  {f.projects.map((p, index) => (
+                    <option key={`${f.id}-${p}-${index}`} value={p}>{p}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>
@@ -319,8 +323,12 @@ export const ProcessInboxModal = () => {
               onChange={e => setProject(e.target.value)}
             >
               <option value="">No project</option>
-              {folders.flatMap(f => f.projects).map(p => (
-                <option key={p} value={p}>{p}</option>
+              {folders.map(f => (
+                <optgroup key={f.id} label={f.name}>
+                  {f.projects.map((p, index) => (
+                    <option key={`${f.id}-${p}-${index}`} value={p}>{p}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>

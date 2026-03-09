@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Task, Priority } from '../types';
 import { useAppContext } from '../store';
 import { getLocalISOString } from '../utils';
+import confetti from 'canvas-confetti';
+import { motion } from 'motion/react';
 
 const priorityColors: Record<Priority, string> = {
   p1: 'text-p1 bg-p1/10',
@@ -33,14 +35,37 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
       setTags(prev => [...prev, newTag]);
     }
 
-    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, tags: [...t.tags, tagName] } : t));
+    setTasks(prev => prev.map(t => {
+      if (t.id === task.id) {
+        if (t.tags.includes(tagName)) return t;
+        return { ...t, tags: [...t.tags, tagName] };
+      }
+      return t;
+    }));
   };
 
   const toggleCheck = (e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    const isCompleted = !task.completed;
+    
+    if (isCompleted) {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const x = (rect.left + rect.width / 2) / window.innerWidth;
+      const y = (rect.top + rect.height / 2) / window.innerHeight;
+      
+      confetti({
+        particleCount: 40,
+        spread: 50,
+        origin: { x, y },
+        colors: ['#22c55e', '#7c6af7', '#ffffff'],
+        disableForReducedMotion: true,
+        zIndex: 100,
+      });
+    }
+
     setTasks(prev => prev.map(t => {
       if (t.id === task.id) {
-        const isCompleted = !t.completed;
         return { 
           ...t, 
           completed: isCompleted,
@@ -53,8 +78,16 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
 
   const toggleSubtask = (e: React.MouseEvent, subtaskId: string) => {
     e.stopPropagation();
+    
+    let isCompleted = false;
+    
     setTasks(prev => prev.map(t => {
       if (t.id === task.id && t.subtasks) {
+        const subtask = t.subtasks.find(s => s.id === subtaskId);
+        if (subtask) {
+          isCompleted = !subtask.completed;
+        }
+        
         return {
           ...t,
           subtasks: t.subtasks.map(s => s.id === subtaskId ? { ...s, completed: !s.completed } : s)
@@ -62,6 +95,21 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
       }
       return t;
     }));
+    
+    if (isCompleted) {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const x = (rect.left + rect.width / 2) / window.innerWidth;
+      const y = (rect.top + rect.height / 2) / window.innerHeight;
+      
+      confetti({
+        particleCount: 20,
+        spread: 40,
+        origin: { x, y },
+        colors: ['#22c55e', '#7c6af7', '#ffffff'],
+        disableForReducedMotion: true,
+        zIndex: 100,
+      });
+    }
   };
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
@@ -164,12 +212,23 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
       onClick={() => setExpanded(!expanded)}
     >
       <div className="text-text-muted text-xs cursor-grab opacity-100 md:opacity-0 md:group-hover:opacity-100 mt-0.5 transition-opacity absolute left-1">⠿</div>
-      <div 
-        className={`w-[17px] h-[17px] rounded-full border-[1.5px] shrink-0 mt-0.5 transition-all cursor-pointer flex items-center justify-center ml-3 ${task.completed ? 'bg-green border-green' : 'border-text-faint hover:border-accent'}`}
+      <motion.div 
+        className={`w-[17px] h-[17px] rounded-full border-[1.5px] shrink-0 mt-0.5 transition-colors cursor-pointer flex items-center justify-center ml-3 ${task.completed ? 'bg-green border-green' : 'border-text-faint hover:border-accent'}`}
         onClick={toggleCheck}
+        whileTap={{ scale: 0.8 }}
+        animate={task.completed ? { scale: [1, 1.2, 1] } : { scale: 1 }}
+        transition={{ duration: 0.3 }}
       >
-        {task.completed && <span className="text-[10px] text-white font-bold leading-none">✓</span>}
-      </div>
+        {task.completed && (
+          <motion.span 
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-[10px] text-white font-bold leading-none"
+          >
+            ✓
+          </motion.span>
+        )}
+      </motion.div>
       <div className="flex-1 min-w-0">
         {expanded ? (
           <input 
@@ -210,8 +269,12 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
               className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none cursor-pointer max-w-[100px]"
             >
               <option value="">No Project</option>
-              {folders.flatMap(f => f.projects).map(p => (
-                <option key={p} value={p}>{p}</option>
+              {folders.map(f => (
+                <optgroup key={f.id} label={f.name}>
+                  {f.projects.map((p, index) => (
+                    <option key={`${f.id}-${p}-${index}`} value={p}>{p}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           ) : (
@@ -261,8 +324,8 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
 
           {expanded ? (
             <div className="flex items-center gap-1.5 flex-wrap">
-              {task.tags.map(tag => (
-                <span key={tag} className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint flex items-center gap-1 bg-bg3">
+              {task.tags.map((tag, index) => (
+                <span key={`${tag}-${index}`} className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint flex items-center gap-1 bg-bg3">
                   {tag}
                   <button 
                     onClick={(e) => {
@@ -324,8 +387,8 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
               )}
             </div>
           ) : (
-            task.tags.map(tag => (
-              <span key={tag} className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint">
+            task.tags.map((tag, index) => (
+              <span key={`${tag}-${index}`} className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint">
                 {tag}
               </span>
             ))
@@ -340,9 +403,22 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
                 className="flex items-center gap-2.5 p-1.5 px-2 rounded-md text-[13px] text-text-muted cursor-pointer hover:bg-bg3 transition-colors"
                 onClick={(e) => toggleSubtask(e, sub.id)}
               >
-                <div className={`w-[13px] h-[13px] rounded-[3px] border-[1.5px] shrink-0 flex items-center justify-center transition-all ${sub.completed ? 'bg-green border-green' : 'border-text-faint hover:border-accent'}`}>
-                  {sub.completed && <span className="text-[8px] text-white leading-none">✓</span>}
-                </div>
+                <motion.div 
+                  className={`w-[13px] h-[13px] rounded-[3px] border-[1.5px] shrink-0 flex items-center justify-center transition-colors ${sub.completed ? 'bg-green border-green' : 'border-text-faint hover:border-accent'}`}
+                  whileTap={{ scale: 0.8 }}
+                  animate={sub.completed ? { scale: [1, 1.2, 1] } : { scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {sub.completed && (
+                    <motion.span 
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="text-[8px] text-white leading-none"
+                    >
+                      ✓
+                    </motion.span>
+                  )}
+                </motion.div>
                 <span className={sub.completed ? 'line-through text-text-faint' : ''}>{sub.title}</span>
               </div>
             ))}
