@@ -11,7 +11,7 @@ const priorityColors: Record<Priority, string> = {
 };
 
 export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
-  const { tasks, setTasks, folders, duplicateTask, tags, setTags } = useAppContext();
+  const { tasks, setTasks, folders, duplicateTask, tags, setTags, goals } = useAppContext();
   const [expanded, setExpanded] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -218,6 +218,27 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
             task.project && (
               <span className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint">
                 {task.project}
+              </span>
+            )
+          )}
+
+          {expanded ? (
+            <select
+              value={task.goalId || ''}
+              onChange={(e) => setTasks(prev => prev.map(t => t.id === task.id ? { ...t, goalId: e.target.value || undefined } : t))}
+              onClick={(e) => e.stopPropagation()}
+              className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none cursor-pointer max-w-[100px]"
+            >
+              <option value="">No Goal</option>
+              {goals.map(g => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          ) : (
+            task.goalId && (
+              <span className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: goals.find(g => g.id === task.goalId)?.color || '#7c6af7' }}></span>
+                {goals.find(g => g.id === task.goalId)?.name || 'Goal'}
               </span>
             )
           )}

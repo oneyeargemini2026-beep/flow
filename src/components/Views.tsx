@@ -47,6 +47,169 @@ const CircularProgress = ({ completed, total }: { completed: number; total: numb
   );
 };
 
+export const GoalsView = () => {
+  const { goals, setGoals, tasks } = useAppContext();
+  const [isAdding, setIsAdding] = useState(false);
+  const [newGoalName, setNewGoalName] = useState('');
+  const [newGoalColor, setNewGoalColor] = useState('#7c6af7');
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [editingGoalName, setEditingGoalName] = useState('');
+
+  const todayStr = getLocalDateString();
+
+  const handleAddGoal = () => {
+    if (!newGoalName.trim()) return;
+    const newGoal = {
+      id: `goal-${Date.now()}`,
+      name: newGoalName.trim(),
+      color: newGoalColor,
+      createdAt: new Date().toISOString()
+    };
+    setGoals(prev => [...prev, newGoal]);
+    setNewGoalName('');
+    setIsAdding(false);
+  };
+
+  const handleDeleteGoal = (id: string) => {
+    setGoals(prev => prev.filter(g => g.id !== id));
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto p-3 px-3.5 md:p-5 md:px-6">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-serif font-medium text-text-main">Goals</h2>
+        <button 
+          className="px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors bg-accent text-white hover:bg-accent2 border-none"
+          onClick={() => setIsAdding(true)}
+        >
+          + New Goal
+        </button>
+      </div>
+
+      {isAdding && (
+        <div className="bg-bg2 border border-border-subtle rounded-[10px] p-4 mb-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: newGoalColor }}></div>
+            <input 
+              autoFocus
+              type="text" 
+              placeholder="Goal name (e.g. Be satisfied with Calisthenics abilities)" 
+              className="flex-1 bg-transparent border-none outline-none text-text-main text-sm font-sans placeholder:text-text-faint"
+              value={newGoalName}
+              onChange={e => setNewGoalName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAddGoal()}
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setIsAdding(false)} className="text-xs text-text-muted hover:text-text-main">Cancel</button>
+            <button onClick={handleAddGoal} className="text-xs text-accent hover:text-accent2 font-medium">Save</button>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {goals.map(goal => {
+          // Check if any task linked to this goal was completed today
+          const completedToday = tasks.some(t => 
+            t.goalId === goal.id && 
+            t.completed && 
+            t.completedDate && 
+            t.completedDate.startsWith(todayStr)
+          );
+
+          const linkedTasks = tasks.filter(t => t.goalId === goal.id && !t.deleted);
+          const pendingTasks = linkedTasks.filter(t => !t.completed);
+
+          return (
+            <div key={goal.id} className="bg-bg2 border border-border-subtle rounded-[10px] p-5 flex flex-col">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: goal.color }}></div>
+                  {editingGoalId === goal.id ? (
+                    <input 
+                      autoFocus
+                      className="font-serif text-lg bg-transparent border-b border-accent outline-none text-text-main"
+                      value={editingGoalName}
+                      onChange={e => setEditingGoalName(e.target.value)}
+                      onBlur={() => {
+                        setGoals(prev => prev.map(g => g.id === goal.id ? { ...g, name: editingGoalName } : g));
+                        setEditingGoalId(null);
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          setGoals(prev => prev.map(g => g.id === goal.id ? { ...g, name: editingGoalName } : g));
+                          setEditingGoalId(null);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <h3 
+                      className="font-serif text-lg text-text-main cursor-pointer hover:text-accent transition-colors"
+                      onClick={() => {
+                        setEditingGoalId(goal.id);
+                        setEditingGoalName(goal.name);
+                      }}
+                    >
+                      {goal.name}
+                    </h3>
+                  )}
+                </div>
+                <button 
+                  className="text-text-faint hover:text-red-500 transition-colors"
+                  onClick={() => handleDeleteGoal(goal.id)}
+                  title="Delete Goal"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 mb-4">
+                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium ${completedToday ? 'bg-green/10 text-green' : 'bg-bg3 text-text-muted'}`}>
+                  {completedToday ? (
+                    <>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      Progress made today
+                    </>
+                  ) : (
+                    <>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                      No progress today
+                    </>
+                  )}
+                </div>
+                <div className="text-xs text-text-faint font-mono">
+                  {pendingTasks.length} pending tasks
+                </div>
+              </div>
+
+              <div className="mt-auto pt-4 border-t border-border-subtle">
+                <div className="text-xs font-medium text-text-muted mb-2 uppercase tracking-wider">Linked Tasks</div>
+                {pendingTasks.slice(0, 3).map(t => (
+                  <div key={t.id} className="text-sm text-text-main truncate mb-1 flex items-center gap-2">
+                    <div className="w-1 h-1 rounded-full bg-border-strong"></div>
+                    {t.title}
+                  </div>
+                ))}
+                {pendingTasks.length > 3 && (
+                  <div className="text-xs text-text-faint italic mt-1">+{pendingTasks.length - 3} more...</div>
+                )}
+                {pendingTasks.length === 0 && (
+                  <div className="text-xs text-text-faint italic">No pending tasks linked.</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {goals.length === 0 && !isAdding && (
+          <div className="col-span-full text-center py-10 text-text-faint italic">
+            No goals set yet. Create one to start tracking your progress!
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const ProjectView = () => {
   const { tasks, setTasks, activeProject, tags: globalTags, setTags: setGlobalTags } = useAppContext();
   

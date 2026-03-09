@@ -4,13 +4,14 @@ import { Task } from '../types';
 import { getLocalDateString, parseTaskInput } from '../utils';
 
 export const AddTaskModal = () => {
-  const { isAddTaskOpen, setIsAddTaskOpen, setTasks, activeProject, folders, tags: globalTags, setTags: setGlobalTags } = useAppContext();
+  const { isAddTaskOpen, setIsAddTaskOpen, setTasks, activeProject, folders, tags: globalTags, setTags: setGlobalTags, goals } = useAppContext();
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState('p2');
   const [dueDate, setDueDate] = useState(getLocalDateString());
   const [dueTime, setDueTime] = useState('');
   const [project, setProject] = useState('');
   const [section, setSection] = useState('');
+  const [goalId, setGoalId] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagName, setNewTagName] = useState('');
@@ -19,6 +20,7 @@ export const AddTaskModal = () => {
     if (isAddTaskOpen) {
       setProject(activeProject || '');
       setSection('');
+      setGoalId('');
       setTags([]);
       setIsAddingTag(false);
       setNewTagName('');
@@ -54,6 +56,7 @@ export const AddTaskModal = () => {
       dueTime,
       project,
       section: section.trim() || undefined,
+      goalId: goalId || undefined,
       tags: finalTags,
       completed: false
     };
@@ -143,6 +146,19 @@ export const AddTaskModal = () => {
               disabled={!project}
             />
           </div>
+          <div className="flex-1">
+            <label className="text-[11px] font-mono text-text-faint mb-1.5 block uppercase tracking-[0.08em]">Goal</label>
+            <select 
+              className="w-full bg-bg3 border border-border-strong rounded-lg px-3 py-2 text-text-main text-sm font-sans outline-none cursor-pointer"
+              value={goalId}
+              onChange={e => setGoalId(e.target.value)}
+            >
+              <option value="">No Goal</option>
+              {goals.map(g => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="flex flex-col md:flex-row gap-3 mb-4">
@@ -216,15 +232,17 @@ export const AddTaskModal = () => {
 };
 
 export const ProcessInboxModal = () => {
-  const { isProcessInboxOpen, setIsProcessInboxOpen, tasks, setTasks, folders } = useAppContext();
+  const { isProcessInboxOpen, setIsProcessInboxOpen, tasks, setTasks, folders, goals } = useAppContext();
   const inboxTasks = tasks.filter(t => t.isInbox && !t.completed);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [project, setProject] = useState('');
   const [priority, setPriority] = useState('p3');
+  const [goalId, setGoalId] = useState('');
 
   useEffect(() => {
     setProject('');
     setPriority('p3');
+    setGoalId('');
   }, [currentIndex, isProcessInboxOpen]);
 
   if (!isProcessInboxOpen) return null;
@@ -233,7 +251,7 @@ export const ProcessInboxModal = () => {
 
   const handleOrganize = () => {
     if (currentTask) {
-      setTasks(prev => prev.map(t => t.id === currentTask.id ? { ...t, isInbox: false, project: project || undefined, priority: priority as any } : t));
+      setTasks(prev => prev.map(t => t.id === currentTask.id ? { ...t, isInbox: false, project: project || undefined, priority: priority as any, goalId: goalId || undefined } : t));
     }
     if (currentIndex < inboxTasks.length - 1) {
       setCurrentIndex(prev => prev + 1);
@@ -303,6 +321,19 @@ export const ProcessInboxModal = () => {
               <option value="">No project</option>
               {folders.flatMap(f => f.projects).map(p => (
                 <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="text-[11px] font-mono text-text-faint mb-1.5 block uppercase tracking-[0.08em]">Goal</label>
+            <select 
+              className="w-full bg-bg3 border border-border-strong rounded-lg px-3 py-2 text-text-main text-sm font-sans outline-none cursor-pointer"
+              value={goalId}
+              onChange={e => setGoalId(e.target.value)}
+            >
+              <option value="">No Goal</option>
+              {goals.map(g => (
+                <option key={g.id} value={g.id}>{g.name}</option>
               ))}
             </select>
           </div>

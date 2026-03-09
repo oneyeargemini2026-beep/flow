@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Task, Folder, Archive, ViewType, MatrixConfig, Tag } from './types';
+import { Task, Folder, Archive, ViewType, MatrixConfig, Tag, Goal } from './types';
 import { getLocalDateString } from './utils';
 
 const initialFolders: Folder[] = [
@@ -11,6 +11,8 @@ const initialTags: Tag[] = [
   { id: 't1', name: 'Urgent', color: '#ff5c5c' },
   { id: 't2', name: 'Home', color: '#3ecf8e' }
 ];
+
+const initialGoals: Goal[] = [];
 
 const initialTasks: Task[] = [];
 
@@ -38,6 +40,8 @@ interface AppContextType {
   setArchives: React.Dispatch<React.SetStateAction<Archive[]>>;
   tags: Tag[];
   setTags: React.Dispatch<React.SetStateAction<Tag[]>>;
+  goals: Goal[];
+  setGoals: React.Dispatch<React.SetStateAction<Goal[]>>;
   matrixConfig: MatrixConfig;
   setMatrixConfig: React.Dispatch<React.SetStateAction<MatrixConfig>>;
   isFocusOpen: boolean;
@@ -90,6 +94,16 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     }
   });
   
+  const [goals, setGoals] = useState<Goal[]>(() => {
+    try {
+      const saved = localStorage.getItem('goals');
+      return saved ? JSON.parse(saved) : initialGoals;
+    } catch (e) {
+      console.error('Failed to load goals from localStorage', e);
+      return initialGoals;
+    }
+  });
+
   const [archives, setArchives] = useState<Archive[]>(() => {
     try {
       const saved = localStorage.getItem('archives');
@@ -198,6 +212,14 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
 
   useEffect(() => {
     try {
+      localStorage.setItem('goals', JSON.stringify(goals));
+    } catch (e) {
+      console.error('Failed to save goals to localStorage', e);
+    }
+  }, [goals]);
+
+  useEffect(() => {
+    try {
       localStorage.setItem('archives', JSON.stringify(archives));
     } catch (e) {
       console.error('Failed to save archives to localStorage', e);
@@ -292,6 +314,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
       folders, setFolders,
       archives, setArchives,
       tags, setTags,
+      goals, setGoals,
       matrixConfig, setMatrixConfig,
       isFocusOpen, setIsFocusOpen,
       isAddTaskOpen, setIsAddTaskOpen,

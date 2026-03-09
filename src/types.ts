@@ -1,5 +1,12 @@
-export type ViewType = 'today' | 'upcoming' | 'inbox' | 'dashboard' | 'matrix' | 'calendar' | 'archive' | 'trash' | 'history' | 'tags' | 'folder' | 'project';
+export type ViewType = 'today' | 'upcoming' | 'inbox' | 'dashboard' | 'matrix' | 'calendar' | 'archive' | 'trash' | 'history' | 'tags' | 'folder' | 'project' | 'goals';
 export type Priority = 'p1' | 'p2' | 'p3' | 'p4';
+
+export interface Goal {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+}
 
 export interface Subtask {
   id: string;
@@ -27,6 +34,7 @@ export interface Task {
   subtasks?: Subtask[];
   isInbox?: boolean;
   deleted?: boolean;
+  goalId?: string;
 }
 
 export interface Folder {

@@ -140,6 +140,7 @@ export const Sidebar = () => {
     { id: 'today', icon: '☀️', label: 'Today' },
     { id: 'upcoming', icon: '📅', label: 'Upcoming' },
     { id: 'inbox', icon: '📥', label: 'Inbox', badge: tasks.filter(t => t.isInbox && !t.deleted && !t.completed).length },
+    { id: 'goals', icon: '🎯', label: 'Goals' },
     { id: 'dashboard', icon: '⬡', label: 'Dashboard' },
     { id: 'matrix', icon: '⊞', label: 'Matrix' },
     { id: 'calendar', icon: '◫', label: 'Calendar' },
