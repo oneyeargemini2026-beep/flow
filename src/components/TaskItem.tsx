@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Task, Priority } from '../types';
 import { useAppContext } from '../store';
-import { getLocalISOString } from '../utils';
+import { getLocalISOString, getLocalDateString } from '../utils';
 import confetti from 'canvas-confetti';
 import { motion } from 'motion/react';
 
@@ -13,8 +13,42 @@ const priorityColors: Record<Priority, string> = {
 };
 
 export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
-  const { tasks, setTasks, folders, duplicateTask, tags, setTags, goals } = useAppContext();
-  const [expanded, setExpanded] = useState(false);
+  const { tasks, setTasks, folders, duplicateTask, tags, setTags, goals, editingTaskId, setEditingTaskId } = useAppContext();
+  const expanded = editingTaskId === task.id;
+  
+  const [localTask, setLocalTask] = useState<Task>(task);
+  const prevExpandedRef = React.useRef(expanded);
+  const isDeletingRef = React.useRef(false);
+
+  // Sync local task when entering edit mode
+  React.useEffect(() => {
+    if (expanded && !prevExpandedRef.current) {
+      setLocalTask(task);
+    }
+  }, [expanded, task]);
+
+  React.useEffect(() => {
+    if (prevExpandedRef.current && !expanded && !isDeletingRef.current) {
+      // Save changes to global state when exiting edit mode
+      setTasks(prev => prev.map(t => {
+        if (t.id === task.id) {
+          const isInbox = !(localTask.project || localTask.dueDate);
+          return { ...localTask, isInbox };
+        }
+        return t;
+      }));
+    }
+    prevExpandedRef.current = expanded;
+  }, [expanded, localTask, task.id, setTasks]);
+
+  const setExpanded = (isExpanded: boolean) => {
+    if (isExpanded) {
+      setEditingTaskId(task.id);
+    } else {
+      setEditingTaskId(null);
+    }
+  };
+
   const [isDragging, setIsDragging] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isAddingTag, setIsAddingTag] = useState(false);
@@ -35,19 +69,16 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
       setTags(prev => [...prev, newTag]);
     }
 
-    setTasks(prev => prev.map(t => {
-      if (t.id === task.id) {
-        if (t.tags.includes(tagName)) return t;
-        return { ...t, tags: [...t.tags, tagName] };
-      }
-      return t;
-    }));
+    setLocalTask(prev => {
+      if (prev.tags.includes(tagName)) return prev;
+      return { ...prev, tags: [...prev.tags, tagName] };
+    });
   };
 
   const toggleCheck = (e: React.MouseEvent) => {
     e.stopPropagation();
     
-    const isCompleted = !task.completed;
+    const isCompleted = expanded ? !localTask.completed : !task.completed;
     
     if (isCompleted) {
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -64,37 +95,51 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
       });
     }
 
-    setTasks(prev => prev.map(t => {
-      if (t.id === task.id) {
-        return { 
-          ...t, 
-          completed: isCompleted,
-          completedDate: isCompleted ? getLocalISOString() : undefined
-        };
-      }
-      return t;
-    }));
+    if (expanded) {
+      setLocalTask(prev => ({
+        ...prev,
+        completed: isCompleted,
+        completedDate: isCompleted ? getLocalISOString() : undefined
+      }));
+    } else {
+      setTasks(prev => prev.map(t => {
+        if (t.id === task.id) {
+          return { 
+            ...t, 
+            completed: isCompleted,
+            completedDate: isCompleted ? getLocalISOString() : undefined
+          };
+        }
+        return t;
+      }));
+    }
   };
 
   const toggleSubtask = (e: React.MouseEvent, subtaskId: string) => {
     e.stopPropagation();
     
-    let isCompleted = false;
+    const currentTask = expanded ? localTask : task;
+    const subtask = currentTask.subtasks?.find(s => s.id === subtaskId);
+    if (!subtask) return;
     
-    setTasks(prev => prev.map(t => {
-      if (t.id === task.id && t.subtasks) {
-        const subtask = t.subtasks.find(s => s.id === subtaskId);
-        if (subtask) {
-          isCompleted = !subtask.completed;
+    const isCompleted = !subtask.completed;
+    
+    if (expanded) {
+      setLocalTask(prev => ({
+        ...prev,
+        subtasks: prev.subtasks?.map(s => s.id === subtaskId ? { ...s, completed: isCompleted } : s) || []
+      }));
+    } else {
+      setTasks(prev => prev.map(t => {
+        if (t.id === task.id && t.subtasks) {
+          return {
+            ...t,
+            subtasks: t.subtasks.map(s => s.id === subtaskId ? { ...s, completed: isCompleted } : s)
+          };
         }
-        
-        return {
-          ...t,
-          subtasks: t.subtasks.map(s => s.id === subtaskId ? { ...s, completed: !s.completed } : s)
-        };
-      }
-      return t;
-    }));
+        return t;
+      }));
+    }
     
     if (isCompleted) {
       const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -202,24 +247,24 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
 
   return (
     <div 
-      draggable
+      draggable={!expanded}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`flex items-start gap-3 p-2.5 px-3.5 rounded-lg cursor-pointer transition-all relative mb-0.5 border group ${expanded ? 'bg-bg2 border-border-strong' : 'border-transparent hover:bg-bg2 hover:border-border-subtle'} ${task.completed ? 'opacity-60' : ''} ${isDragging ? 'opacity-30 border-dashed border-border-strong bg-transparent' : ''} ${isDragOver ? 'border-t-accent border-t-2 bg-bg3' : ''} ${isDeleting ? 'animate-disintegrate pointer-events-none' : ''}`}
+      className={`flex items-start gap-3 p-2.5 px-3.5 rounded-lg cursor-pointer transition-all relative mb-0.5 border group ${expanded ? 'bg-bg2 border-border-strong' : 'border-transparent hover:bg-bg2 hover:border-border-subtle'} ${(expanded ? localTask.completed : task.completed) ? 'opacity-60' : ''} ${isDragging ? 'opacity-30 border-dashed border-border-strong bg-transparent' : ''} ${isDragOver ? 'border-t-accent border-t-2 bg-bg3' : ''} ${isDeleting ? 'animate-disintegrate pointer-events-none' : ''}`}
       onClick={() => setExpanded(!expanded)}
     >
       <div className="text-text-muted text-xs cursor-grab opacity-100 md:opacity-0 md:group-hover:opacity-100 mt-0.5 transition-opacity absolute left-1">⠿</div>
       <motion.div 
-        className={`w-[17px] h-[17px] rounded-full border-[1.5px] shrink-0 mt-0.5 transition-colors cursor-pointer flex items-center justify-center ml-3 ${task.completed ? 'bg-green border-green' : 'border-text-faint hover:border-accent'}`}
+        className={`w-[17px] h-[17px] rounded-full border-[1.5px] shrink-0 mt-0.5 transition-colors cursor-pointer flex items-center justify-center ml-3 ${(expanded ? localTask.completed : task.completed) ? 'bg-green border-green' : 'border-text-faint hover:border-accent'}`}
         onClick={toggleCheck}
         whileTap={{ scale: 0.8 }}
-        animate={task.completed ? { scale: [1, 1.2, 1] } : { scale: 1 }}
+        animate={(expanded ? localTask.completed : task.completed) ? { scale: [1, 1.2, 1] } : { scale: 1 }}
         transition={{ duration: 0.3 }}
       >
-        {task.completed && (
+        {(expanded ? localTask.completed : task.completed) && (
           <motion.span 
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -233,10 +278,15 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
         {expanded ? (
           <input 
             type="text" 
-            value={task.title} 
-            onChange={(e) => setTasks(prev => prev.map(t => t.id === task.id ? { ...t, title: e.target.value } : t))}
+            value={localTask.title} 
+            onChange={(e) => setLocalTask(prev => ({ ...prev, title: e.target.value }))}
             className="text-sm mb-[3px] bg-transparent border-none outline-none w-full text-text-main font-medium placeholder:text-text-faint"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setExpanded(false);
+              }
+            }}
             placeholder="Task title"
           />
         ) : (
@@ -245,10 +295,10 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
         <div className="flex items-center gap-2 flex-wrap">
           {expanded ? (
             <select 
-              value={task.priority}
-              onChange={(e) => setTasks(prev => prev.map(t => t.id === task.id ? { ...t, priority: e.target.value as Priority } : t))}
+              value={localTask.priority}
+              onChange={(e) => setLocalTask(prev => ({ ...prev, priority: e.target.value as Priority }))}
               onClick={(e) => e.stopPropagation()}
-              className={`font-mono text-[10px] px-1.5 py-[1px] rounded font-medium border-none outline-none cursor-pointer ${priorityColors[task.priority]}`}
+              className={`font-mono text-[10px] px-1.5 py-[1px] rounded font-medium border-none outline-none cursor-pointer ${priorityColors[localTask.priority]}`}
             >
               <option value="p1">P1</option>
               <option value="p2">P2</option>
@@ -263,8 +313,8 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
 
           {expanded ? (
             <select
-              value={task.project || ''}
-              onChange={(e) => setTasks(prev => prev.map(t => t.id === task.id ? { ...t, project: e.target.value || undefined } : t))}
+              value={localTask.project || ''}
+              onChange={(e) => setLocalTask(prev => ({ ...prev, project: e.target.value || undefined }))}
               onClick={(e) => e.stopPropagation()}
               className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none cursor-pointer max-w-[100px]"
             >
@@ -287,8 +337,8 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
 
           {expanded ? (
             <select
-              value={task.goalId || ''}
-              onChange={(e) => setTasks(prev => prev.map(t => t.id === task.id ? { ...t, goalId: e.target.value || undefined } : t))}
+              value={localTask.goalId || ''}
+              onChange={(e) => setLocalTask(prev => ({ ...prev, goalId: e.target.value || undefined }))}
               onClick={(e) => e.stopPropagation()}
               className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none cursor-pointer max-w-[100px]"
             >
@@ -307,16 +357,48 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
           )}
 
           {expanded ? (
-            <input 
-              type="date"
-              value={task.dueDate || ''}
-              onChange={(e) => setTasks(prev => prev.map(t => t.id === task.id ? { ...t, dueDate: e.target.value } : t))}
-              onClick={(e) => e.stopPropagation()}
-              className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none"
-            />
+            <div className="flex items-center gap-1.5">
+              <input 
+                type="date"
+                value={localTask.dueDate || ''}
+                onChange={(e) => setLocalTask(prev => {
+                  const newDate = e.target.value;
+                  const newTime = newDate ? prev.dueTime : undefined;
+                  return { ...prev, dueDate: newDate, dueTime: newTime };
+                })}
+                onClick={(e) => e.stopPropagation()}
+                className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none hover:border-text-faint transition-colors cursor-pointer"
+              />
+              {localTask.dueDate && (
+                <div className="relative flex items-center">
+                  <select 
+                    value={localTask.dueTime || ''}
+                    onChange={(e) => setLocalTask(prev => ({ ...prev, dueTime: e.target.value }))}
+                    onClick={(e) => e.stopPropagation()}
+                    className="font-mono text-[10px] pl-1.5 pr-4 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none appearance-none cursor-pointer hover:border-text-faint transition-colors"
+                  >
+                    <option value="" className="bg-bg2">Time</option>
+                    {Array.from({ length: 24 * 4 }).map((_, i) => {
+                      const hour = Math.floor(i / 4).toString().padStart(2, '0');
+                      const minute = ((i % 4) * 15).toString().padStart(2, '0');
+                      const time = `${hour}:${minute}`;
+                      return <option key={time} value={time} className="bg-bg2">{time}</option>;
+                    })}
+                    {localTask.dueTime && !Array.from({ length: 24 * 4 }).some((_, i) => {
+                      const hour = Math.floor(i / 4).toString().padStart(2, '0');
+                      const minute = ((i % 4) * 15).toString().padStart(2, '0');
+                      return `${hour}:${minute}` === localTask.dueTime;
+                    }) && (
+                      <option value={localTask.dueTime} className="bg-bg2">{localTask.dueTime}</option>
+                    )}
+                  </select>
+                  <svg className="w-2.5 h-2.5 absolute right-1 pointer-events-none text-text-faint" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+              )}
+            </div>
           ) : (
             task.dueDate && (
-              <span className={`font-mono text-[10px] flex items-center gap-1 ${new Date(task.dueDate) < new Date() ? 'text-red' : 'text-text-muted'}`}>
+              <span className={`font-mono text-[10px] flex items-center gap-1 ${task.dueDate < getLocalDateString() ? 'text-red' : 'text-text-muted'}`}>
                 ⏰ {task.dueDate} {task.dueTime || ''}
               </span>
             )
@@ -324,13 +406,13 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
 
           {expanded ? (
             <div className="flex items-center gap-1.5 flex-wrap">
-              {task.tags.map((tag, index) => (
+              {localTask.tags.map((tag, index) => (
                 <span key={`${tag}-${index}`} className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint flex items-center gap-1 bg-bg3">
                   {tag}
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
-                      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, tags: t.tags.filter(tg => tg !== tag) } : t));
+                      setLocalTask(prev => ({ ...prev, tags: prev.tags.filter(tg => tg !== tag) }));
                     }}
                     className="hover:text-red-500"
                   >
@@ -379,7 +461,7 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
                   onClick={e => e.stopPropagation()}
                 >
                   <option value="">+ Tag</option>
-                  {tags.filter(t => !task.tags.includes(t.name)).map(tag => (
+                  {tags.filter(t => !localTask.tags.includes(t.name)).map(tag => (
                     <option key={tag.id} value={tag.name}>{tag.name}</option>
                   ))}
                   <option value="__new__">+ New Tag...</option>
@@ -397,14 +479,14 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
         
         {expanded && (
           <div className="pt-2 pb-1 pl-1" onClick={e => e.stopPropagation()}>
-            {task.subtasks?.map(sub => (
+            {localTask.subtasks?.map(sub => (
               <div 
                 key={sub.id} 
-                className="flex items-center gap-2.5 p-1.5 px-2 rounded-md text-[13px] text-text-muted cursor-pointer hover:bg-bg3 transition-colors"
+                className="flex items-center gap-2.5 p-1.5 px-2 rounded-md text-[13px] text-text-muted hover:bg-bg3 transition-colors"
                 onClick={(e) => toggleSubtask(e, sub.id)}
               >
                 <motion.div 
-                  className={`w-[13px] h-[13px] rounded-[3px] border-[1.5px] shrink-0 flex items-center justify-center transition-colors ${sub.completed ? 'bg-green border-green' : 'border-text-faint hover:border-accent'}`}
+                  className={`w-[13px] h-[13px] rounded-[3px] border-[1.5px] shrink-0 flex items-center justify-center transition-colors cursor-pointer ${sub.completed ? 'bg-green border-green' : 'border-text-faint hover:border-accent'}`}
                   whileTap={{ scale: 0.8 }}
                   animate={sub.completed ? { scale: [1, 1.2, 1] } : { scale: 1 }}
                   transition={{ duration: 0.3 }}
@@ -419,10 +501,54 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
                     </motion.span>
                   )}
                 </motion.div>
-                <span className={sub.completed ? 'line-through text-text-faint' : ''}>{sub.title}</span>
+                <input
+                  type="text"
+                  value={sub.title}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    setLocalTask(prev => ({
+                      ...prev,
+                      subtasks: prev.subtasks?.map(s => s.id === sub.id ? { ...s, title: e.target.value } : s) || []
+                    }));
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className={`flex-1 bg-transparent border-none outline-none ${sub.completed ? 'line-through text-text-faint' : 'text-text-main'}`}
+                  placeholder="Subtask title"
+                  autoFocus={sub.title === ''}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      setLocalTask(prev => ({
+                        ...prev,
+                        subtasks: [...(prev.subtasks || []), { id: Math.random().toString(36).substring(2, 9), title: '', completed: false }]
+                      }));
+                    }
+                  }}
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setLocalTask(prev => ({
+                      ...prev,
+                      subtasks: prev.subtasks?.filter(s => s.id !== sub.id) || []
+                    }));
+                  }}
+                  className="text-text-faint hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
               </div>
             ))}
-            <div className="flex items-center gap-1.5 p-1.5 px-2 rounded-md text-xs text-text-faint cursor-pointer hover:text-text-muted hover:bg-bg3 transition-colors mt-1">
+            <div 
+              className="flex items-center gap-1.5 p-1.5 px-2 rounded-md text-xs text-text-faint cursor-pointer hover:text-text-muted hover:bg-bg3 transition-colors mt-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLocalTask(prev => ({
+                  ...prev,
+                  subtasks: [...(prev.subtasks || []), { id: Math.random().toString(36).substring(2, 9), title: '', completed: false }]
+                }));
+              }}
+            >
               <span>+</span> Add subtask
             </div>
           </div>
@@ -447,6 +573,8 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
         <button 
           onClick={(e) => {
             e.stopPropagation();
+            isDeletingRef.current = true;
+            if (expanded) setEditingTaskId(null);
             setTasks(prev => prev.map(t => t.id === task.id ? { ...t, deleted: true } : t));
           }}
           className="text-text-faint hover:text-red-500 p-1 rounded hover:bg-red-500/10 transition-colors"

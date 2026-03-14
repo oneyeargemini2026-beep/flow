@@ -55,6 +55,8 @@ interface AppContextType {
   moveProject: (projectName: string, fromFolderId: string, toFolderId: string, targetIndex?: number) => void;
   renameProject: (oldName: string, newName: string) => void;
   duplicateTask: (taskId: string) => void;
+  editingTaskId: string | null;
+  setEditingTaskId: (id: string | null) => void;
 }
 
 export const AppContext = createContext<AppContextType | null>(null);
@@ -238,6 +240,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isProcessInboxOpen, setIsProcessInboxOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
   const moveProject = (projectName: string, fromFolderId: string, toFolderId: string, targetIndex?: number) => {
     setFolders(prev => {
@@ -321,7 +324,8 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
       isProcessInboxOpen, setIsProcessInboxOpen,
       isSidebarOpen, setIsSidebarOpen,
       moveProject, renameProject,
-      duplicateTask
+      duplicateTask,
+      editingTaskId, setEditingTaskId
     }}>
       {children}
     </AppContext.Provider>
