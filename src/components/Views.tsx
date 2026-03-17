@@ -211,14 +211,24 @@ export const GoalsView = () => {
 };
 
 export const ProjectView = () => {
-  const { tasks, setTasks, activeProject, tags: globalTags, setTags: setGlobalTags } = useAppContext();
+  const { tasks, setTasks, activeProject, tags: globalTags, setTags: setGlobalTags, renameProject } = useAppContext();
   
+  const [isEditingProject, setIsEditingProject] = useState(false);
+  const [editedProjectName, setEditedProjectName] = useState('');
+
   const projectTasks = tasks.filter(t => t.project === activeProject && !t.deleted);
 
   const sortTasks = (tasksToSort: typeof tasks) => {
     return [...tasksToSort].sort((a, b) => {
       return a.title.localeCompare(b.title);
     });
+  };
+
+  const handleRenameProject = () => {
+    if (activeProject && editedProjectName.trim() && editedProjectName.trim() !== activeProject) {
+      renameProject(activeProject, editedProjectName.trim());
+    }
+    setIsEditingProject(false);
   };
 
   const incompleteTasks = sortTasks(projectTasks.filter(t => !t.completed));
@@ -257,9 +267,44 @@ export const ProjectView = () => {
 
   return (
     <div className="flex-1 overflow-y-auto p-3 px-3.5 md:p-5 md:px-6">
-      <div className="flex items-center gap-2.5 mb-6">
-        <h2 className="text-xl font-serif font-medium text-text-main">{activeProject}</h2>
-        <span className="text-xs text-text-faint bg-bg3 px-2 py-0.5 rounded-full font-mono ml-2">
+      <div className="flex items-center gap-2.5 mb-6 group/project-title">
+        {isEditingProject ? (
+          <input
+            autoFocus
+            type="text"
+            value={editedProjectName}
+            onChange={(e) => setEditedProjectName(e.target.value)}
+            onBlur={handleRenameProject}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleRenameProject();
+              if (e.key === 'Escape') setIsEditingProject(false);
+            }}
+            className="text-xl font-serif font-medium bg-transparent border-none outline-none text-text-main w-full"
+          />
+        ) : (
+          <>
+            <h2 
+              className="text-xl font-serif font-medium text-text-main cursor-pointer hover:underline decoration-dotted underline-offset-4"
+              onClick={() => {
+                setEditedProjectName(activeProject || '');
+                setIsEditingProject(true);
+              }}
+            >
+              {activeProject}
+            </h2>
+            <button
+              onClick={() => {
+                setEditedProjectName(activeProject || '');
+                setIsEditingProject(true);
+              }}
+              className="opacity-0 group-hover/project-title:opacity-100 text-text-faint hover:text-text-main transition-opacity"
+              title="Rename project"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+            </button>
+          </>
+        )}
+        <span className="text-xs text-text-faint bg-bg3 px-2 py-0.5 rounded-full font-mono ml-2 shrink-0">
           {incompleteTasks.length} tasks
         </span>
       </div>
@@ -982,8 +1027,13 @@ export const ArchiveView = () => {
 };
 
 export const FolderView = () => {
-  const { tasks, activeFolder, folders } = useAppContext();
+  const { tasks, activeFolder, setActiveFolder, folders, setFolders, renameProject } = useAppContext();
   
+  const [isEditingFolder, setIsEditingFolder] = useState(false);
+  const [editedFolderName, setEditedFolderName] = useState('');
+  const [editingProject, setEditingProject] = useState<string | null>(null);
+  const [editedProjectName, setEditedProjectName] = useState('');
+
   const folder = folders.find(f => f.name === activeFolder);
   const folderProjects = folder ? folder.projects : [];
   
@@ -994,12 +1044,63 @@ export const FolderView = () => {
     folderProjects.includes(t.project)
   ).sort((a, b) => a.title.localeCompare(b.title));
 
+  const handleRenameFolder = () => {
+    if (editedFolderName.trim() && editedFolderName.trim() !== activeFolder && folder) {
+      const newName = editedFolderName.trim();
+      setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, name: newName } : f));
+      setActiveFolder(newName);
+    }
+    setIsEditingFolder(false);
+  };
+
+  const handleRenameProject = (oldName: string) => {
+    if (editedProjectName.trim() && editedProjectName.trim() !== oldName) {
+      renameProject(oldName, editedProjectName.trim());
+    }
+    setEditingProject(null);
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-3 px-3.5 md:p-5 md:px-6">
-      <div className="flex items-center gap-2.5 mb-6">
-        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: folder?.color || '#7c6af7' }}></div>
-        <h2 className="text-xl font-serif font-medium text-text-main">{activeFolder}</h2>
-        <span className="text-xs text-text-faint bg-bg3 px-2 py-0.5 rounded-full font-mono ml-2">
+      <div className="flex items-center gap-2.5 mb-6 group/folder-title">
+        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: folder?.color || '#7c6af7' }}></div>
+        {isEditingFolder ? (
+          <input
+            autoFocus
+            type="text"
+            value={editedFolderName}
+            onChange={(e) => setEditedFolderName(e.target.value)}
+            onBlur={handleRenameFolder}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleRenameFolder();
+              if (e.key === 'Escape') setIsEditingFolder(false);
+            }}
+            className="text-xl font-serif font-medium bg-transparent border-none outline-none text-text-main w-full"
+          />
+        ) : (
+          <>
+            <h2 
+              className="text-xl font-serif font-medium text-text-main cursor-pointer hover:underline decoration-dotted underline-offset-4"
+              onClick={() => {
+                setEditedFolderName(activeFolder || '');
+                setIsEditingFolder(true);
+              }}
+            >
+              {activeFolder}
+            </h2>
+            <button
+              onClick={() => {
+                setEditedFolderName(activeFolder || '');
+                setIsEditingFolder(true);
+              }}
+              className="opacity-0 group-hover/folder-title:opacity-100 text-text-faint hover:text-text-main transition-opacity"
+              title="Rename folder"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+            </button>
+          </>
+        )}
+        <span className="text-xs text-text-faint bg-bg3 px-2 py-0.5 rounded-full font-mono ml-2 shrink-0">
           {folderTasks.length} tasks
         </span>
       </div>
@@ -1014,9 +1115,44 @@ export const FolderView = () => {
           
           return (
             <div key={`${project}-${index}`} className="mb-8">
-              <div className="flex items-center gap-2 mb-3 border-b border-border-subtle pb-1">
-                <h3 className="font-mono text-xs uppercase tracking-wider text-text-muted">{project}</h3>
-                <span className="text-[10px] text-text-faint">{projectTasks.length}</span>
+              <div className="flex items-center gap-2 mb-3 border-b border-border-subtle pb-1 group/project-title">
+                {editingProject === project ? (
+                  <input
+                    autoFocus
+                    type="text"
+                    value={editedProjectName}
+                    onChange={(e) => setEditedProjectName(e.target.value)}
+                    onBlur={() => handleRenameProject(project)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleRenameProject(project);
+                      if (e.key === 'Escape') setEditingProject(null);
+                    }}
+                    className="font-mono text-xs uppercase tracking-wider bg-transparent border-none outline-none text-text-main w-full"
+                  />
+                ) : (
+                  <>
+                    <h3 
+                      className="font-mono text-xs uppercase tracking-wider text-text-muted cursor-pointer hover:text-text-main transition-colors"
+                      onClick={() => {
+                        setEditedProjectName(project);
+                        setEditingProject(project);
+                      }}
+                    >
+                      {project}
+                    </h3>
+                    <button
+                      onClick={() => {
+                        setEditedProjectName(project);
+                        setEditingProject(project);
+                      }}
+                      className="opacity-0 group-hover/project-title:opacity-100 text-text-faint hover:text-text-main transition-opacity"
+                      title="Rename project"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                    </button>
+                  </>
+                )}
+                <span className="text-[10px] text-text-faint ml-auto">{projectTasks.length}</span>
               </div>
               <div className="flex flex-col">
                 {projectTasks.length > 0 ? (

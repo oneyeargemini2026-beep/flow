@@ -791,7 +791,7 @@ export const Topbar = () => {
           />
         ) : (
           <div 
-            className={`font-serif text-base md:text-[20px] font-normal ${activeProject ? 'cursor-pointer hover:underline decoration-dotted underline-offset-4' : ''}`}
+            className={`font-serif text-base md:text-[20px] font-normal flex items-center gap-2 group/topbar-title ${activeProject ? 'cursor-pointer' : ''}`}
             onClick={() => {
               if (activeProject) {
                 setIsEditing(true);
@@ -799,7 +799,15 @@ export const Topbar = () => {
               }
             }}
           >
-            {title}
+            <span className={activeProject ? 'hover:underline decoration-dotted underline-offset-4' : ''}>{title}</span>
+            {activeProject && (
+              <button
+                className="opacity-0 group-hover/topbar-title:opacity-100 text-text-faint hover:text-text-main transition-opacity"
+                title="Rename project"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+              </button>
+            )}
           </div>
         )}
       </div>
