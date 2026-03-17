@@ -211,7 +211,7 @@ export const GoalsView = () => {
 };
 
 export const ProjectView = () => {
-  const { tasks, setTasks, activeProject, tags: globalTags, setTags: setGlobalTags, renameProject } = useAppContext();
+  const { tasks, setTasks, activeProject, tags: globalTags, setTags: setGlobalTags, renameProject, folders } = useAppContext();
   
   const [isEditingProject, setIsEditingProject] = useState(false);
   const [editedProjectName, setEditedProjectName] = useState('');
@@ -224,9 +224,16 @@ export const ProjectView = () => {
     });
   };
 
-  const handleRenameProject = () => {
-    if (activeProject && editedProjectName.trim() && editedProjectName.trim() !== activeProject) {
-      renameProject(activeProject, editedProjectName.trim());
+  const handleRenameProject = (newName: string) => {
+    const trimmedNewName = newName.trim();
+    if (activeProject && trimmedNewName && trimmedNewName !== activeProject) {
+      const projectExists = folders.some(f => f.projects.includes(trimmedNewName));
+      if (!projectExists) {
+        renameProject(activeProject, trimmedNewName);
+      } else {
+        // Optionally, you could show an error message here
+        // alert("A project with this name already exists.");
+      }
     }
     setIsEditingProject(false);
   };
@@ -274,9 +281,9 @@ export const ProjectView = () => {
             type="text"
             value={editedProjectName}
             onChange={(e) => setEditedProjectName(e.target.value)}
-            onBlur={handleRenameProject}
+            onBlur={(e) => handleRenameProject(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') handleRenameProject();
+              if (e.key === 'Enter') handleRenameProject(e.currentTarget.value);
               if (e.key === 'Escape') setIsEditingProject(false);
             }}
             className="text-xl font-serif font-medium bg-transparent border-none outline-none text-text-main w-full"
@@ -1027,11 +1034,11 @@ export const ArchiveView = () => {
 };
 
 export const FolderView = () => {
-  const { tasks, activeFolder, setActiveFolder, folders, setFolders, renameProject } = useAppContext();
+  const { tasks, setTasks, activeFolder, setActiveFolder, folders, setFolders, activeProject, setActiveProject } = useAppContext();
   
   const [isEditingFolder, setIsEditingFolder] = useState(false);
   const [editedFolderName, setEditedFolderName] = useState('');
-  const [editingProject, setEditingProject] = useState<string | null>(null);
+  const [editingProjectIndex, setEditingProjectIndex] = useState<number | null>(null);
   const [editedProjectName, setEditedProjectName] = useState('');
 
   const folder = folders.find(f => f.name === activeFolder);
@@ -1053,11 +1060,29 @@ export const FolderView = () => {
     setIsEditingFolder(false);
   };
 
-  const handleRenameProject = (oldName: string) => {
-    if (editedProjectName.trim() && editedProjectName.trim() !== oldName) {
-      renameProject(oldName, editedProjectName.trim());
+  const handleRenameProject = (oldName: string, index: number, newName: string) => {
+    const trimmedNewName = newName.trim();
+    if (trimmedNewName && trimmedNewName !== oldName) {
+      const projectExists = folders.some(f => f.projects.includes(trimmedNewName));
+      if (!projectExists) {
+        setFolders(prev => prev.map(f => {
+          if (f.id === folder?.id) {
+            const newProjects = [...f.projects];
+            newProjects[index] = trimmedNewName;
+            return { ...f, projects: newProjects };
+          }
+          return f;
+        }));
+        setTasks(prev => prev.map(t => t.project === oldName ? { ...t, project: trimmedNewName } : t));
+        if (activeProject === oldName) {
+          setActiveProject(trimmedNewName);
+        }
+      } else {
+        // Optionally, you could show an error message here
+        // alert("A project with this name already exists.");
+      }
     }
-    setEditingProject(null);
+    setEditingProjectIndex(null);
   };
 
   return (
@@ -1116,16 +1141,16 @@ export const FolderView = () => {
           return (
             <div key={`${project}-${index}`} className="mb-8">
               <div className="flex items-center gap-2 mb-3 border-b border-border-subtle pb-1 group/project-title">
-                {editingProject === project ? (
+                {editingProjectIndex === index ? (
                   <input
                     autoFocus
                     type="text"
                     value={editedProjectName}
                     onChange={(e) => setEditedProjectName(e.target.value)}
-                    onBlur={() => handleRenameProject(project)}
+                    onBlur={(e) => handleRenameProject(project, index, e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleRenameProject(project);
-                      if (e.key === 'Escape') setEditingProject(null);
+                      if (e.key === 'Enter') handleRenameProject(project, index, e.currentTarget.value);
+                      if (e.key === 'Escape') setEditingProjectIndex(null);
                     }}
                     className="font-mono text-xs uppercase tracking-wider bg-transparent border-none outline-none text-text-main w-full"
                   />
@@ -1135,7 +1160,7 @@ export const FolderView = () => {
                       className="font-mono text-xs uppercase tracking-wider text-text-muted cursor-pointer hover:text-text-main transition-colors"
                       onClick={() => {
                         setEditedProjectName(project);
-                        setEditingProject(project);
+                        setEditingProjectIndex(index);
                       }}
                     >
                       {project}
@@ -1143,7 +1168,7 @@ export const FolderView = () => {
                     <button
                       onClick={() => {
                         setEditedProjectName(project);
-                        setEditingProject(project);
+                        setEditingProjectIndex(index);
                       }}
                       className="opacity-0 group-hover/project-title:opacity-100 text-text-faint hover:text-text-main transition-opacity"
                       title="Rename project"

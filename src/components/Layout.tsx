@@ -294,9 +294,17 @@ export const Sidebar = () => {
   const handleCreateProject = (folderId: string) => {
     const trimmedName = newProjectName.trim();
     if (!trimmedName) return;
+    
+    // Check if project already exists in any folder
+    const projectExists = folders.some(f => f.projects.includes(trimmedName));
+    if (projectExists) {
+      // Optionally show an error message
+      // alert("A project with this name already exists.");
+      return;
+    }
+
     setFolders(prev => prev.map(f => {
       if (f.id === folderId) {
-        if (f.projects.includes(trimmedName)) return f;
         return { ...f, projects: [...f.projects, trimmedName] };
       }
       return f;
@@ -592,7 +600,14 @@ export const Sidebar = () => {
                             onClick={(e) => {
                                 e.stopPropagation();
                                 if (confirmDeleteId === projDeleteId) {
-                                  setFolders(prev => prev.map(f => f.id === folder.id ? { ...f, projects: f.projects.filter(p => p !== proj) } : f));
+                                  setFolders(prev => prev.map(f => {
+                                    if (f.id === folder.id) {
+                                      const newProjects = [...f.projects];
+                                      newProjects.splice(index, 1);
+                                      return { ...f, projects: newProjects };
+                                    }
+                                    return f;
+                                  }));
                                   // Also update tasks to remove project association
                                   setTasks(prev => prev.map(t => t.project === proj ? { ...t, project: undefined } : t));
                                   setConfirmDeleteId(null);
@@ -741,7 +756,7 @@ export const Sidebar = () => {
 };
 
 export const Topbar = () => {
-  const { currentView, activeProject, setIsAddTaskOpen, setIsSidebarOpen, renameProject } = useAppContext();
+  const { currentView, activeProject, setIsAddTaskOpen, setIsSidebarOpen, renameProject, folders } = useAppContext();
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
   
@@ -758,8 +773,12 @@ export const Topbar = () => {
   }, [title]);
 
   const handleRename = () => {
-    if (activeProject && editedTitle !== activeProject) {
-      renameProject(activeProject, editedTitle);
+    const trimmedTitle = editedTitle.trim();
+    if (activeProject && trimmedTitle && trimmedTitle !== activeProject) {
+      const projectExists = folders.some(f => f.projects.includes(trimmedTitle));
+      if (!projectExists) {
+        renameProject(activeProject, trimmedTitle);
+      }
     }
     setIsEditing(false);
   };

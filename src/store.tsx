@@ -273,10 +273,22 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     if (!newName.trim() || oldName === newName) return;
     
     // Update folders
-    setFolders(prev => prev.map(f => ({
-      ...f,
-      projects: f.projects.map(p => p === oldName ? newName : p)
-    })));
+    let renamed = false;
+    setFolders(prev => prev.map(f => {
+      if (!renamed && f.projects.includes(oldName)) {
+        renamed = true;
+        const newProjects = [...f.projects];
+        const index = newProjects.indexOf(oldName);
+        if (index !== -1) {
+          newProjects[index] = newName;
+        }
+        return {
+          ...f,
+          projects: newProjects
+        };
+      }
+      return f;
+    }));
 
     // Update tasks
     setTasks(prev => prev.map(t => t.project === oldName ? { ...t, project: newName } : t));
