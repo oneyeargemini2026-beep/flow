@@ -1448,50 +1448,103 @@ export const UpcomingView = () => {
 };
 
 export const CalendarView = () => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const { tasks, setIsAddTaskOpen } = useAppContext();
-  const [viewMode, setViewMode] = React.useState<'day' | 'week' | 'month'>('week');
+  const { tasks, setIsAddTaskOpen, setTasks } = useAppContext();
+  const [viewMode, setViewMode] = React.useState<'month' | 'week'>('month');
   const [currentDate, setCurrentDate] = React.useState(new Date());
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = 8 * 60;
-    }
-  }, [viewMode]);
+  const [selectedDate, setSelectedDate] = React.useState(new Date());
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-  const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-  
-  const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
-  const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const fullDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
+
+  const getDaysInMonth = (y: number, m: number) => new Date(y, m + 1, 0).getDate();
+  const getFirstDayOfMonth = (y: number, m: number) => new Date(y, m, 1).getDay();
+
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
 
-  const monthDays = [];
-  for (let i = 0; i < firstDay; i++) {
-    monthDays.push({ day: '', isNextMonth: false, isEmpty: true });
+  const prevMonthDays = getDaysInMonth(year, month - 1);
+
+  let displayDays: { day: number, isCurrentMonth: boolean, date: Date }[] = [];
+  
+  if (viewMode === 'month') {
+    // Previous month days
+    for (let i = firstDay - 1; i >= 0; i--) {
+      displayDays.push({ 
+        day: prevMonthDays - i, 
+        isCurrentMonth: false, 
+        date: new Date(year, month - 1, prevMonthDays - i) 
+      });
+    }
+    
+    // Current month days
+    for (let i = 1; i <= daysInMonth; i++) {
+      displayDays.push({ 
+        day: i, 
+        isCurrentMonth: true, 
+        date: new Date(year, month, i) 
+      });
+    }
+    
+    // Next month days
+    const remainingDays = 42 - displayDays.length; // 6 rows of 7 days
+    for (let i = 1; i <= remainingDays; i++) {
+      displayDays.push({ 
+        day: i, 
+        isCurrentMonth: false, 
+        date: new Date(year, month + 1, i) 
+      });
+    }
+  } else {
+    // Week view
+    const weekStart = new Date(currentDate);
+    weekStart.setDate(currentDate.getDate() - currentDate.getDay());
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart);
+      d.setDate(weekStart.getDate() + i);
+      displayDays.push({
+        day: d.getDate(),
+        isCurrentMonth: d.getMonth() === month,
+        date: d
+      });
+    }
   }
-  for (let i = 1; i <= daysInMonth; i++) {
-    monthDays.push({ day: i, isNextMonth: false, isEmpty: false });
-  }
-  const remainingDays = 35 - monthDays.length;
-  for (let i = 1; i <= remainingDays; i++) {
-    monthDays.push({ day: i, isNextMonth: true, isEmpty: false });
-  }
+
+  // Filter tasks for the selected date
+  const selectedDateStr = getLocalDateString(selectedDate);
+  const selectedDayTasks = tasks.filter(t => t.dueDate === selectedDateStr && !t.deleted);
+  const sortedSelectedDayTasks = [...selectedDayTasks].sort((a, b) => {
+    if (a.completed !== b.completed) return a.completed ? 1 : -1;
+    if (a.dueTime && b.dueTime) return a.dueTime.localeCompare(b.dueTime);
+    return 0;
+  });
+
+  const remainingTasksThisMonth = tasks.filter(t => {
+    if (t.deleted || t.completed || !t.dueDate) return false;
+    const taskDate = new Date(t.dueDate);
+    return taskDate.getMonth() === month && taskDate.getFullYear() === year;
+  }).length;
+
+  const toggleTaskCompletion = (taskId: string) => {
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t));
+  };
+
+  const priorityColors: Record<string, string> = {
+    p1: 'bg-red-500',
+    p2: 'bg-orange-400',
+    p3: 'bg-indigo-500',
+    p4: 'bg-gray-400'
+  };
 
   const handlePrev = () => {
     if (viewMode === 'month') {
       setCurrentDate(new Date(year, month - 1, 1));
-    } else if (viewMode === 'week') {
-      const newDate = new Date(currentDate);
-      newDate.setDate(newDate.getDate() - 7);
-      setCurrentDate(newDate);
     } else {
       const newDate = new Date(currentDate);
-      newDate.setDate(newDate.getDate() - 1);
+      newDate.setDate(newDate.getDate() - 7);
       setCurrentDate(newDate);
     }
   };
@@ -1499,199 +1552,179 @@ export const CalendarView = () => {
   const handleNext = () => {
     if (viewMode === 'month') {
       setCurrentDate(new Date(year, month + 1, 1));
-    } else if (viewMode === 'week') {
-      const newDate = new Date(currentDate);
-      newDate.setDate(newDate.getDate() + 7);
-      setCurrentDate(newDate);
     } else {
       const newDate = new Date(currentDate);
-      newDate.setDate(newDate.getDate() + 1);
+      newDate.setDate(newDate.getDate() + 7);
       setCurrentDate(newDate);
     }
   };
 
-  const handleToday = () => {
-    setCurrentDate(new Date());
-  };
-
-  // Calculate week days for week view
-  const weekStart = new Date(currentDate);
-  weekStart.setDate(currentDate.getDate() - currentDate.getDay());
-  const weekDays = Array.from({length: 7}).map((_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(weekStart.getDate() + i);
-    return d;
-  });
-
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-bg relative">
-      {/* Header */}
-      <div className="hidden md:flex items-center justify-between p-3 px-4 md:px-6 border-b border-border-subtle shrink-0">
-        <div className="flex items-center gap-2 md:gap-4">
-          <div className="font-sans text-lg md:text-xl font-medium">
-            {viewMode === 'day' 
-              ? `${dayNames[currentDate.getDay()]} ${monthNames[month]} ${currentDate.getDate()}, ${year}`
-              : `${monthNames[month]} ${year}`}
+    <div className="flex-1 flex flex-col bg-bg overflow-hidden h-full" data-purpose="calendar-view">
+      {/* Header Section */}
+      <header className="px-6 pt-6 pb-4 border-b border-border-subtle shrink-0" data-purpose="calendar-header">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-text-main">{monthNames[month]} {year}</h1>
+            <p className="text-sm text-text-muted font-medium">{remainingTasksThisMonth} tasks remaining this month</p>
           </div>
-          <div className="flex items-center gap-1">
-            <button className="p-1.5 rounded-full hover:bg-bg3 text-text-muted transition-colors" onClick={handlePrev}><ChevronLeft size={20}/></button>
-            <button className="p-1.5 rounded-full hover:bg-bg3 text-text-muted transition-colors" onClick={handleNext}><ChevronRight size={20}/></button>
-            <button className="hidden md:block px-3 py-1.5 rounded-md border border-border-strong text-sm font-medium hover:bg-bg3 transition-colors ml-2" onClick={handleToday}>Today</button>
+          <div className="flex items-center gap-2">
+            <button 
+              className="p-2 text-text-muted hover:text-text-main transition-colors"
+              onClick={handlePrev}
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <button 
+              className="p-2 text-text-muted hover:text-text-main transition-colors"
+              onClick={handleNext}
+            >
+              <ChevronRight size={20} />
+            </button>
+            <button 
+              className="p-2 bg-accent/10 text-accent rounded-full hover:bg-accent/20 transition-colors ml-2"
+              onClick={() => setIsAddTaskOpen(true)}
+            >
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+            </button>
           </div>
         </div>
-        <div className="flex bg-bg2 border border-border-strong rounded-md overflow-hidden">
-          <button className={`hidden md:block px-4 py-1.5 text-sm font-medium border-r border-border-strong ${viewMode === 'day' ? 'bg-bg3 text-text-main' : 'hover:bg-bg3 text-text-muted'}`} onClick={() => setViewMode('day')}>Day</button>
-          <button className={`px-3 md:px-4 py-1.5 text-sm font-medium border-r border-border-strong ${viewMode === 'week' ? 'bg-bg3 text-text-main' : 'hover:bg-bg3 text-text-muted'}`} onClick={() => setViewMode('week')}>Week</button>
-          <button className={`px-3 md:px-4 py-1.5 text-sm font-medium ${viewMode === 'month' ? 'bg-bg3 text-text-main' : 'hover:bg-bg3 text-text-muted'}`} onClick={() => setViewMode('month')}>Month</button>
+        {/* View Toggle */}
+        <div className="flex bg-bg2 p-1 rounded-xl" data-purpose="view-toggle">
+          <button 
+            className={`flex-1 py-2 text-sm font-semibold text-center rounded-lg ${viewMode === 'month' ? 'bg-bg3 shadow-sm text-text-main' : 'text-text-muted hover:text-text-main'}`}
+            onClick={() => setViewMode('month')}
+          >
+            Month
+          </button>
+          <button 
+            className={`flex-1 py-2 text-sm font-semibold text-center rounded-lg ${viewMode === 'week' ? 'bg-bg3 shadow-sm text-text-main' : 'text-text-muted hover:text-text-main'}`}
+            onClick={() => setViewMode('week')}
+          >
+            Week
+          </button>
         </div>
-      </div>
+      </header>
 
-      {/* Mobile Month View */}
-      <div className="flex-1 flex flex-col md:hidden overflow-hidden bg-bg">
-        <div className="grid grid-cols-7 border-b border-border-subtle shrink-0 bg-bg2">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <div key={day} className="text-center py-2 text-[11px] font-bold text-text-main">
-              {day}
-            </div>
-          ))}
-        </div>
-        <div className="flex-1 grid grid-cols-7 grid-rows-5 overflow-y-auto bg-bg">
-          {monthDays.map((date, i) => (
-            <div key={i} className="border-r border-b border-border-subtle p-0.5 flex flex-col items-center">
-              {!date.isEmpty && (
-                <div className={`mt-1 mb-1 w-6 h-6 flex items-center justify-center rounded-full text-[13px] font-bold ${date.day === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear() && !date.isNextMonth ? 'bg-text-main text-bg' : 'text-text-main'} ${date.isNextMonth ? 'opacity-30' : ''}`}>
-                  {date.day}
-                </div>
-              )}
-            </div>
+      {/* Calendar Grid Section */}
+      <section className="p-4 shrink-0" data-purpose="monthly-grid">
+        {/* Days of Week Labels */}
+        <div className="grid grid-cols-7 mb-2">
+          {dayNames.map(day => (
+            <div key={day} className="text-center text-xs font-bold text-text-muted uppercase tracking-wider">{day}</div>
           ))}
         </div>
         
-        {/* Floating Action Button */}
-        <button 
-          className="absolute bottom-6 right-6 w-[56px] h-[56px] bg-[#7aa2f7] text-[#0f172a] rounded-[18px] flex items-center justify-center shadow-lg hover:brightness-110 transition-all z-50"
-          onClick={() => setIsAddTaskOpen(true)}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        </button>
-      </div>
+        {/* Calendar Days */}
+        <div className="grid grid-cols-7 gap-y-2">
+          {displayDays.map((dateObj, i) => {
+            const isSelected = dateObj.date.getDate() === selectedDate.getDate() && 
+                               dateObj.date.getMonth() === selectedDate.getMonth() && 
+                               dateObj.date.getFullYear() === selectedDate.getFullYear();
+            
+            const dateStr = getLocalDateString(dateObj.date);
+            const dayTasks = tasks.filter(t => t.dueDate === dateStr && !t.deleted && !t.completed);
+            
+            // Get up to 3 unique priority colors for the dots
+            const dots = Array.from(new Set(dayTasks.map(t => t.priority))).slice(0, 3);
 
-      {/* Desktop Week/Day View */}
-      <div className="hidden md:flex flex-1 flex-col overflow-hidden">
-        {/* Day Headers */}
-        <div className="flex border-b border-border-subtle shrink-0 overflow-y-scroll no-scrollbar" style={{ scrollbarGutter: 'stable' }}>
-          <div className="w-[50px] md:w-[60px] shrink-0 border-r border-border-subtle"></div>
-          <div className={`flex-1 grid ${viewMode === 'day' ? 'grid-cols-1' : 'grid-cols-7'}`}>
-            {viewMode === 'day' ? (
-              <div className="flex flex-col items-center py-2 border-r border-border-subtle last:border-r-0">
-                <span className="text-[10px] md:text-[11px] font-medium mb-1 text-accent">{dayNames[currentDate.getDay()]}</span>
-                <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full text-base md:text-lg bg-accent text-white">
-                  {currentDate.getDate()}
-                </div>
-              </div>
-            ) : (
-              weekDays.map((date, i) => {
-                const isToday = date.getDate() === new Date().getDate() && date.getMonth() === new Date().getMonth() && date.getFullYear() === new Date().getFullYear();
-                return (
-                  <div key={i} className="flex flex-col items-center py-2 border-r border-border-subtle last:border-r-0">
-                    <span className={`text-[10px] md:text-[11px] font-medium mb-1 ${isToday ? 'text-accent' : 'text-text-muted'}`}>{dayNames[date.getDay()]}</span>
-                    <div className={`w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-full text-base md:text-lg ${isToday ? 'bg-accent text-white' : 'text-text-main hover:bg-bg3 cursor-pointer'}`}>
-                      {date.getDate()}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Scrollable Grid */}
-        <div className="flex-1 overflow-y-auto flex relative" ref={scrollRef}>
-          {/* Time Labels */}
-          <div className="w-[50px] md:w-[60px] shrink-0 border-r border-border-subtle bg-bg relative z-10">
-            {Array.from({length: 23}).map((_, i) => (
-              <div key={i} className="h-[60px] relative">
-                <span className="absolute -top-2.5 right-2 text-[10px] text-text-muted font-mono">
-                  {i + 1 === 12 ? '12 PM' : i + 1 > 12 ? `${i + 1 - 12} PM` : `${i + 1} AM`}
+            return (
+              <div 
+                key={i} 
+                className="h-14 flex flex-col items-center justify-center relative cursor-pointer"
+                onClick={() => {
+                  setSelectedDate(dateObj.date);
+                  if (!dateObj.isCurrentMonth) {
+                    setCurrentDate(dateObj.date);
+                  }
+                }}
+              >
+                {isSelected && <div className="absolute inset-2 bg-accent rounded-xl"></div>}
+                <span className={`text-sm ${isSelected ? 'font-bold text-white relative z-10' : dateObj.isCurrentMonth ? 'font-medium text-text-main' : 'text-text-faint'}`}>
+                  {dateObj.day}
                 </span>
+                
+                {dayTasks.length > 0 && (
+                  <div className={`flex gap-0.5 mt-1 ${isSelected ? 'relative z-10' : ''}`}>
+                    {isSelected ? (
+                      <>
+                        <div className="w-1 h-1 bg-white rounded-full"></div>
+                        {dayTasks.length > 1 && <div className="w-1 h-1 bg-white/50 rounded-full"></div>}
+                      </>
+                    ) : (
+                      dots.map((p, idx) => (
+                        <div key={idx} className={`w-1 h-1 rounded-full ${priorityColors[p as string] || 'bg-accent'}`}></div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
-
-          {/* Grid Columns */}
-          <div className={`flex-1 grid ${viewMode === 'day' ? 'grid-cols-1' : 'grid-cols-7'} relative`}>
-            {/* Horizontal Grid Lines */}
-            <div className="absolute inset-0 pointer-events-none flex flex-col">
-              {Array.from({length: 24}).map((_, i) => (
-                <div key={i} className="h-[60px] border-b border-border-subtle w-full shrink-0"></div>
-              ))}
-            </div>
-
-            {/* Vertical Columns */}
-            {Array.from({length: viewMode === 'day' ? 1 : 7}).map((_, dayIdx) => {
-              const dayDate = viewMode === 'day' ? currentDate : weekDays[dayIdx];
-              const dayStr = getLocalDateString(dayDate);
-              const dayTasks = tasks.filter(t => t.dueDate === dayStr && t.dueTime && !t.deleted);
-
-              return (
-                <div key={dayIdx} className="relative border-r border-border-subtle last:border-r-0">
-                  {dayTasks.map(t => {
-                    const [hours, minutes] = t.dueTime!.split(':').map(Number);
-                    const top = hours * 60 + minutes;
-                    const height = 60; // Default 1 hour duration
-                    
-                    const colorMap: Record<string, string> = {
-                      p1: 'bg-red/20 border-red/30 text-red',
-                      p2: 'bg-orange/20 border-orange/30 text-orange',
-                      p3: 'bg-accent/20 border-accent/30 text-accent2',
-                      p4: 'bg-text-faint/20 border-text-faint/30 text-text-muted'
-                    };
-
-                    return (
-                      <div 
-                        key={t.id}
-                        className={`absolute left-0.5 right-0.5 md:left-1 md:right-1 rounded-md p-1 md:p-1.5 text-xs overflow-hidden border hover:brightness-110 cursor-pointer transition-all ${colorMap[t.priority]}`} 
-                        style={{ top: `${top}px`, height: `${height}px` }}
-                      >
-                        <div className="font-medium truncate text-[11px] md:text-xs">{t.title}</div>
-                        <div className="text-[9px] md:text-[10px] opacity-80 truncate">{t.dueTime}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-
-            {/* Current Time Indicator */}
-            {(() => {
-              const now = new Date();
-              const isTodayInView = viewMode === 'day' 
-                ? currentDate.getDate() === now.getDate() && currentDate.getMonth() === now.getMonth() && currentDate.getFullYear() === now.getFullYear()
-                : weekDays.some(d => d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear());
-              
-              if (!isTodayInView) return null;
-
-              const dayIndex = viewMode === 'day' ? 0 : now.getDay();
-              const minutes = now.getHours() * 60 + now.getMinutes();
-              const top = minutes; // 1px per minute since each hour is 60px
-
-              return (
-                <div className="absolute left-0 right-0 pointer-events-none z-20" style={{ top: `${top}px` }}>
-                  <div className="absolute left-0 w-full h-[2px] bg-red/50"></div>
-                  <div className="absolute h-[2px] bg-red" style={{ 
-                    left: viewMode === 'day' ? '0' : `calc(100% / 7 * ${dayIndex})`,
-                    width: viewMode === 'day' ? '100%' : 'calc(100% / 7)'
-                  }}></div>
-                  <div className="absolute w-2.5 h-2.5 rounded-full bg-red" style={{ 
-                    left: viewMode === 'day' ? '-5px' : `calc(100% / 7 * ${dayIndex} - 5px)`, 
-                    top: '-4px' 
-                  }}></div>
-                </div>
-              );
-            })()}
-          </div>
+            );
+          })}
         </div>
-      </div>
+      </section>
+
+      {/* Daily Tasks List Section */}
+      <section className="flex-1 bg-bg2 rounded-t-[32px] shadow-[0_-4px_20px_rgba(0,0,0,0.2)] px-6 pt-8 pb-10 overflow-y-auto no-scrollbar" data-purpose="selected-day-tasks">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-bold text-text-main">
+            {fullDayNames[selectedDate.getDay()]}, {selectedDate.getDate()} {monthNames[selectedDate.getMonth()].substring(0, 3)}
+          </h2>
+          <span className="text-xs font-semibold px-2 py-1 bg-bg3 rounded-full text-text-muted">
+            {sortedSelectedDayTasks.length} TASKS
+          </span>
+        </div>
+        
+        {/* Task Items */}
+        <div className="space-y-4">
+          {sortedSelectedDayTasks.length === 0 ? (
+            <div className="text-center py-8 text-text-muted text-sm">No tasks for this day</div>
+          ) : (
+            sortedSelectedDayTasks.map(task => (
+              <div key={task.id} className="flex items-start gap-4 p-4 bg-bg rounded-2xl shadow-sm cursor-pointer hover:bg-bg3 transition-colors" onClick={() => toggleTaskCompletion(task.id)} data-purpose="task-card">
+                <div className={`w-1 h-12 rounded-full mt-1 ${priorityColors[task.priority] || 'bg-accent'}`}></div>
+                <div className="flex-1 min-w-0">
+                  <h3 className={`font-bold truncate ${task.completed ? 'line-through text-text-faint' : 'text-text-main'}`}>
+                    {task.title}
+                  </h3>
+                  <div className={`flex items-center gap-2 mt-1 text-sm ${task.completed ? 'text-text-faint' : 'text-text-muted'}`}>
+                    {task.dueTime && (
+                      <>
+                        <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span className="truncate">{task.dueTime}</span>
+                      </>
+                    )}
+                    {task.project && (
+                      <span className="truncate px-2 py-0.5 bg-bg3 rounded text-xs font-medium">{task.project}</span>
+                    )}
+                  </div>
+                </div>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleTaskCompletion(task.id);
+                  }}
+                  className={`w-6 h-6 rounded-md flex items-center justify-center mt-1 shrink-0 transition-colors ${
+                    task.completed 
+                      ? 'bg-accent border-accent' 
+                      : 'border-2 border-border-strong hover:border-accent'
+                  }`}
+                >
+                  {task.completed && (
+                    <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                      <path fillRule="evenodd" clipRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"></path>
+                    </svg>
+                  )}
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
     </div>
   );
 };
