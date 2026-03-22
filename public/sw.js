@@ -40,12 +40,17 @@ self.addEventListener('fetch', event => {
     caches.match(event.request)
       .then(response => {
         const fetchPromise = fetch(event.request).then(networkResponse => {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseClone);
-          });
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then(cache => {
+              cache.put(event.request, responseClone);
+            });
+          }
           return networkResponse;
+        }).catch(() => {
+          // If fetch fails, we just return whatever we have in cache or let it fail if nothing in cache
         });
+        
         return response || fetchPromise;
       })
   );

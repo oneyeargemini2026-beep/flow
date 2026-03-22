@@ -765,6 +765,18 @@ export const Topbar = () => {
   const { currentView, activeProject, setIsAddTaskOpen, setIsSidebarOpen, renameProject, folders } = useAppContext();
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
   
   const titles: Record<string, string> = {
     today: 'Today', inbox: 'Inbox', upcoming: 'Upcoming',
@@ -836,6 +848,12 @@ export const Topbar = () => {
           </div>
         )}
       </div>
+      {!isOnline && (
+        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-yellow-500/10 text-yellow-500 rounded-full text-[10px] font-mono uppercase tracking-wider border border-yellow-500/20">
+          <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span>
+          Offline
+        </div>
+      )}
       <div className="flex-1"></div>
       {(currentView === 'today' || currentView === 'upcoming') && !activeProject && (
         <div className="hidden md:flex gap-1">
