@@ -106,8 +106,11 @@ function useSyncedCollection<T extends { id: string }>(
       initializedRef.current = false;
       return;
     }
+    console.log(`[useSyncedCollection:${collectionName}] Setting up listener for userId: ${userId}`);
     const q = query(collection(db, collectionName), where('userId', '==', userId));
-    const unsub = onSnapshot(q, (snapshot) => {
+    const unsub = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+      console.log(`[useSyncedCollection:${collectionName}] Snapshot received. From cache: ${snapshot.metadata.fromCache}, Empty: ${snapshot.empty}, Size: ${snapshot.size}`);
+      
       if (snapshot.empty && !initializedRef.current && initialData.length > 0) {
         // Initialize default data for new users with UNIQUE IDs to avoid conflicts
         const batch = writeBatch(db);
@@ -216,6 +219,7 @@ function useSyncedDocument<T>(
 
 interface AppContextType {
   user: User | null;
+  authReady: boolean;
   signIn: () => void;
   signOutUser: () => void;
   currentView: ViewType;
@@ -440,7 +444,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
 
   return (
     <AppContext.Provider value={{
-      user, signIn, signOutUser,
+      user, authReady, signIn, signOutUser,
       currentView, setCurrentView,
       activeProject, setActiveProject,
       activeFolder, setActiveFolder,

@@ -150,8 +150,17 @@ const MainContent = () => {
 };
 
 const AppContent = () => {
-  const { user } = useAppContext();
+  const { user, authReady } = useAppContext();
   
+  if (!authReady) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-bg text-text-main">
+        <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-text-muted font-mono text-sm">Initializing...</p>
+      </div>
+    );
+  }
+
   if (!user) {
     return <LoginView />;
   }
