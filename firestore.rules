@@ -1,0 +1,69 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+    
+    function isCreatingOwner() {
+      return isAuthenticated() && request.auth.uid == request.resource.data.userId;
+    }
+
+    function isUpdatingOwner() {
+      return isAuthenticated() && request.auth.uid == request.resource.data.userId && request.auth.uid == resource.data.userId;
+    }
+
+    // Tasks Collection
+    match /tasks/{taskId} {
+      allow read: if isOwner();
+      allow create: if isCreatingOwner();
+      allow update: if isUpdatingOwner();
+      allow delete: if isOwner();
+    }
+
+    // Folders Collection
+    match /folders/{folderId} {
+      allow read: if isOwner();
+      allow create: if isCreatingOwner();
+      allow update: if isUpdatingOwner();
+      allow delete: if isOwner();
+    }
+
+    // Tags Collection
+    match /tags/{tagId} {
+      allow read: if isOwner();
+      allow create: if isCreatingOwner();
+      allow update: if isUpdatingOwner();
+      allow delete: if isOwner();
+    }
+
+    // Goals Collection
+    match /goals/{goalId} {
+      allow read: if isOwner();
+      allow create: if isCreatingOwner();
+      allow update: if isUpdatingOwner();
+      allow delete: if isOwner();
+    }
+
+    // Archives Collection
+    match /archives/{archiveId} {
+      allow read: if isOwner();
+      allow create: if isCreatingOwner();
+      allow update: if isUpdatingOwner();
+      allow delete: if isOwner();
+    }
+
+    // MatrixConfigs Collection
+    match /matrixConfigs/{configId} {
+      allow read: if isOwner();
+      allow create: if isCreatingOwner();
+      allow update: if isUpdatingOwner();
+      allow delete: if isOwner();
+    }
+  }
+}

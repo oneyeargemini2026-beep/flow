@@ -1,0 +1,122 @@
+{
+  "entities": {
+    "Task": {
+      "title": "Task",
+      "description": "A task in the task manager",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "priority": { "type": "string", "enum": ["p1", "p2", "p3", "p4"] },
+        "dueDate": { "type": "string" },
+        "dueTime": { "type": "string" },
+        "project": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "completedDate": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "title", "completed", "priority", "userId"]
+    },
+    "Folder": {
+      "title": "Folder",
+      "description": "A folder containing projects",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "type": "string" },
+        "open": { "type": "boolean" },
+        "projects": { "type": "array", "items": { "type": "string" } },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "name", "color", "open", "projects", "userId"]
+    },
+    "Tag": {
+      "title": "Tag",
+      "description": "A tag that can be applied to tasks",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "name", "color", "userId"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "A goal to track progress",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "target": { "type": "number" },
+        "current": { "type": "number" },
+        "deadline": { "type": "string" },
+        "color": { "type": "string" },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "title", "target", "current", "color", "userId"]
+    },
+    "Archive": {
+      "title": "Archive",
+      "description": "An archive of completed tasks",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "type": "string" },
+        "start": { "type": "string" },
+        "end": { "type": "string" },
+        "tasks": { "type": "number" },
+        "completed": { "type": "number" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "quarter": { "type": "string", "enum": ["q1", "q2", "q3", "q4"] },
+        "items": { "type": "array", "items": { "type": "object" } },
+        "userId": { "type": "string" }
+      },
+      "required": ["id", "name", "color", "start", "end", "tasks", "completed", "quarter", "userId"]
+    },
+    "MatrixConfig": {
+      "title": "MatrixConfig",
+      "description": "Configuration for the Eisenhower Matrix",
+      "type": "object",
+      "properties": {
+        "q1": { "type": "object" },
+        "q2": { "type": "object" },
+        "q3": { "type": "object" },
+        "q4": { "type": "object" },
+        "userId": { "type": "string" }
+      },
+      "required": ["q1", "q2", "q3", "q4", "userId"]
+    }
+  },
+  "firestore": {
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Tasks created by users"
+    },
+    "/folders/{folderId}": {
+      "schema": "Folder",
+      "description": "Folders created by users"
+    },
+    "/tags/{tagId}": {
+      "schema": "Tag",
+      "description": "Tags created by users"
+    },
+    "/goals/{goalId}": {
+      "schema": "Goal",
+      "description": "Goals created by users"
+    },
+    "/archives/{archiveId}": {
+      "schema": "Archive",
+      "description": "Archives created by users"
+    },
+    "/matrixConfigs/{configId}": {
+      "schema": "MatrixConfig",
+      "description": "Matrix configurations created by users"
+    }
+  }
+}

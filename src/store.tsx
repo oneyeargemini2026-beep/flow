@@ -1,6 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Task, Folder, Archive, ViewType, MatrixConfig, Tag, Goal } from './types';
 import { getLocalDateString } from './utils';
+import { auth, db } from './firebase';
+import { onAuthStateChanged, User, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { collection, query, where, onSnapshot, writeBatch, doc, setDoc, updateDoc } from 'firebase/firestore';
 
 const initialFolders: Folder[] = [
   { id: 'f1', name: 'Work', color: '#7c6af7', open: true, projects: ['Q2 Launch', 'Hiring'] },
@@ -13,9 +16,7 @@ const initialTags: Tag[] = [
 ];
 
 const initialGoals: Goal[] = [];
-
 const initialTasks: Task[] = [];
-
 const initialArchives: Archive[] = [];
 
 const initialMatrixConfig: MatrixConfig = {
@@ -25,7 +26,131 @@ const initialMatrixConfig: MatrixConfig = {
   q4: { title: 'Eliminate', subtitle: 'NOT URGENT · NOT IMPORTANT', color: '#8888a0' }
 };
 
+function useSyncedCollection<T extends { id: string }>(
+  collectionName: string,
+  userId: string | undefined,
+  initialData: T[] = []
+): [T[], React.Dispatch<React.SetStateAction<T[]>>] {
+  const [items, setItems] = useState<T[]>(initialData);
+  const initializedRef = useRef(false);
+  
+  useEffect(() => {
+    if (!userId) {
+      setItems(initialData);
+      initializedRef.current = false;
+      return;
+    }
+    const q = query(collection(db, collectionName), where('userId', '==', userId));
+    const unsub = onSnapshot(q, (snapshot) => {
+      if (snapshot.empty && !initializedRef.current && initialData.length > 0) {
+        // Initialize default data for new users
+        const batch = writeBatch(db);
+        initialData.forEach(item => {
+          const docRef = doc(db, collectionName, item.id);
+          batch.set(docRef, { ...item, userId });
+        });
+        batch.commit().catch(console.error);
+        setItems(initialData);
+      } else {
+        const newItems = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as T));
+        setItems(newItems);
+      }
+      initializedRef.current = true;
+    }, (error) => {
+      console.error(`Error fetching ${collectionName}:`, error);
+    });
+    return unsub;
+  }, [userId, collectionName]);
+
+  const setSyncedItems: React.Dispatch<React.SetStateAction<T[]>> = (action) => {
+    setItems(prev => {
+      const newItems = typeof action === 'function' ? (action as any)(prev) : action;
+      
+      if (!userId) return newItems;
+
+      const added = newItems.filter(n => !prev.find(p => p.id === n.id));
+      const removed = prev.filter(p => !newItems.find(n => n.id === p.id));
+      const modified = newItems.filter(n => {
+        const p = prev.find(p => p.id === n.id);
+        return p && JSON.stringify(p) !== JSON.stringify(n);
+      });
+
+      if (added.length === 0 && removed.length === 0 && modified.length === 0) {
+        return newItems;
+      }
+
+      const batch = writeBatch(db);
+      added.forEach(item => {
+        const docRef = doc(db, collectionName, item.id);
+        batch.set(docRef, { ...item, userId });
+      });
+      modified.forEach(item => {
+        const docRef = doc(db, collectionName, item.id);
+        batch.update(docRef, { ...item, userId });
+      });
+      removed.forEach(item => {
+        const docRef = doc(db, collectionName, item.id);
+        batch.delete(docRef);
+      });
+      batch.commit().catch(console.error);
+
+      return newItems;
+    });
+  };
+
+  return [items, setSyncedItems];
+}
+
+function useSyncedDocument<T>(
+  collectionName: string,
+  docId: string,
+  userId: string | undefined,
+  initialData: T
+): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const [item, setItem] = useState<T>(initialData);
+  const initializedRef = useRef(false);
+
+  useEffect(() => {
+    if (!userId) {
+      setItem(initialData);
+      initializedRef.current = false;
+      return;
+    }
+    const docRef = doc(db, collectionName, docId);
+    const unsub = onSnapshot(docRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setItem(snapshot.data() as T);
+      } else if (!initializedRef.current) {
+        setDoc(docRef, { ...initialData, userId }).catch(console.error);
+        setItem(initialData);
+      }
+      initializedRef.current = true;
+    }, (error) => {
+      console.error(`Error fetching ${collectionName}/${docId}:`, error);
+    });
+    return unsub;
+  }, [userId, collectionName, docId]);
+
+  const setSyncedItem: React.Dispatch<React.SetStateAction<T>> = (action) => {
+    setItem(prev => {
+      const newItem = typeof action === 'function' ? (action as any)(prev) : action;
+      if (!userId) return newItem;
+      
+      if (JSON.stringify(prev) !== JSON.stringify(newItem)) {
+        const docRef = doc(db, collectionName, docId);
+        updateDoc(docRef, { ...newItem, userId }).catch(console.error);
+      }
+      return newItem;
+    });
+  };
+
+  return [item, setSyncedItem];
+}
+
 interface AppContextType {
+  user: User | null;
+  signIn: () => void;
+  signOutUser: () => void;
   currentView: ViewType;
   setCurrentView: (v: ViewType) => void;
   activeProject: string | null;
@@ -62,78 +187,54 @@ interface AppContextType {
 export const AppContext = createContext<AppContextType | null>(null);
 
 export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthReady(true);
+    });
+    return unsub;
+  }, []);
+
+  const signIn = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Error signing in", error);
+    }
+  };
+
+  const signOutUser = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error signing out", error);
+    }
+  };
+
   const [currentView, setCurrentView] = useState<ViewType>('today');
   const [activeProject, setActiveProject] = useState<string | null>(null);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    try {
-      const saved = localStorage.getItem('tasks');
-      return saved ? JSON.parse(saved) : initialTasks;
-    } catch (e) {
-      console.error('Failed to load tasks from localStorage', e);
-      return initialTasks;
-    }
-  });
-  
-  const [folders, setFolders] = useState<Folder[]>(() => {
-    try {
-      const saved = localStorage.getItem('folders');
-      return saved ? JSON.parse(saved) : initialFolders;
-    } catch (e) {
-      console.error('Failed to load folders from localStorage', e);
-      return initialFolders;
-    }
-  });
-
-  const [tags, setTags] = useState<Tag[]>(() => {
-    try {
-      const saved = localStorage.getItem('tags');
-      return saved ? JSON.parse(saved) : initialTags;
-    } catch (e) {
-      console.error('Failed to load tags from localStorage', e);
-      return initialTags;
-    }
-  });
-  
-  const [goals, setGoals] = useState<Goal[]>(() => {
-    try {
-      const saved = localStorage.getItem('goals');
-      return saved ? JSON.parse(saved) : initialGoals;
-    } catch (e) {
-      console.error('Failed to load goals from localStorage', e);
-      return initialGoals;
-    }
-  });
-
-  const [archives, setArchives] = useState<Archive[]>(() => {
-    try {
-      const saved = localStorage.getItem('archives');
-      return saved ? JSON.parse(saved) : initialArchives;
-    } catch (e) {
-      console.error('Failed to load archives from localStorage', e);
-      return initialArchives;
-    }
-  });
-
-  const [matrixConfig, setMatrixConfig] = useState<MatrixConfig>(() => {
-    try {
-      const saved = localStorage.getItem('matrixConfig');
-      return saved ? JSON.parse(saved) : initialMatrixConfig;
-    } catch (e) {
-      console.error('Failed to load matrixConfig from localStorage', e);
-      return initialMatrixConfig;
-    }
-  });
+  const [tasks, setTasks] = useSyncedCollection<Task>('tasks', user?.uid, initialTasks);
+  const [folders, setFolders] = useSyncedCollection<Folder>('folders', user?.uid, initialFolders);
+  const [tags, setTags] = useSyncedCollection<Tag>('tags', user?.uid, initialTags);
+  const [goals, setGoals] = useSyncedCollection<Goal>('goals', user?.uid, initialGoals);
+  const [archives, setArchives] = useSyncedCollection<Archive>('archives', user?.uid, initialArchives);
+  const [matrixConfig, setMatrixConfig] = useSyncedDocument<MatrixConfig>('matrixConfigs', user?.uid || 'default', user?.uid, initialMatrixConfig);
 
   // Auto-archive logic
   useEffect(() => {
+    if (!user) return;
+    
     const today = getLocalDateString();
     const tasksToArchive = tasks.filter(t => {
       if (!t.completed || !t.completedDate) return false;
-      // Compare only the date part (YYYY-MM-DD)
       const taskDate = t.completedDate.split('T')[0];
-      return taskDate < today; // Archive if completed BEFORE today
+      return taskDate < today;
     });
 
     if (tasksToArchive.length > 0) {
@@ -170,7 +271,6 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
           }
           
           if (!archive.items) archive.items = [];
-          // Check if task is already in archive to prevent duplicates (though filter should handle this)
           if (!archive.items.find(t => t.id === task.id)) {
              archive.items.push(task);
              archive.tasks++;
@@ -186,55 +286,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
 
       setTasks(prevTasks => prevTasks.filter(t => !tasksToArchive.find(a => a.id === t.id)));
     }
-  }, [tasks]); // Only depend on tasks to avoid circular dependency with archives
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('tasks', JSON.stringify(tasks));
-    } catch (e) {
-      console.error('Failed to save tasks to localStorage', e);
-    }
-  }, [tasks]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('folders', JSON.stringify(folders));
-    } catch (e) {
-      console.error('Failed to save folders to localStorage', e);
-    }
-  }, [folders]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('tags', JSON.stringify(tags));
-    } catch (e) {
-      console.error('Failed to save tags to localStorage', e);
-    }
-  }, [tags]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('goals', JSON.stringify(goals));
-    } catch (e) {
-      console.error('Failed to save goals to localStorage', e);
-    }
-  }, [goals]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('archives', JSON.stringify(archives));
-    } catch (e) {
-      console.error('Failed to save archives to localStorage', e);
-    }
-  }, [archives]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('matrixConfig', JSON.stringify(matrixConfig));
-    } catch (e) {
-      console.error('Failed to save matrixConfig to localStorage', e);
-    }
-  }, [matrixConfig]);
+  }, [tasks, user]);
 
   const [isFocusOpen, setIsFocusOpen] = useState(false);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
@@ -244,21 +296,17 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
 
   const moveProject = (projectName: string, fromFolderId: string, toFolderId: string, targetIndex?: number) => {
     setFolders(prev => {
-      // Deep copy to avoid mutation issues
       const newFolders = JSON.parse(JSON.stringify(prev));
-      
       const fromFolder = newFolders.find((f: Folder) => f.id === fromFolderId);
       const toFolder = newFolders.find((f: Folder) => f.id === toFolderId);
       
       if (!fromFolder || !toFolder) return prev;
 
-      // Remove from source
       const projectIndex = fromFolder.projects.indexOf(projectName);
       if (projectIndex === -1) return prev;
       
       fromFolder.projects.splice(projectIndex, 1);
       
-      // Add to destination
       if (targetIndex !== undefined && targetIndex !== null) {
         toFolder.projects.splice(targetIndex, 0, projectName);
       } else {
@@ -272,7 +320,6 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   const renameProject = (oldName: string, newName: string) => {
     if (!newName.trim() || oldName === newName) return;
     
-    // Update folders
     let renamed = false;
     setFolders(prev => prev.map(f => {
       if (!renamed && f.projects.includes(oldName)) {
@@ -290,7 +337,6 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
       return f;
     }));
 
-    // Update tasks
     setTasks(prev => prev.map(t => t.project === oldName ? { ...t, project: newName } : t));
 
     if (activeProject === oldName) {
@@ -308,7 +354,6 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
       title: `${task.title} (Copy)`,
       completed: false,
       completedDate: undefined,
-      // Keep other properties like priority, tags, project, etc.
     };
 
     setTasks(prev => {
@@ -320,8 +365,13 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     });
   };
 
+  if (!authReady) {
+    return <div className="min-h-screen bg-bg flex items-center justify-center text-text-main">Loading...</div>;
+  }
+
   return (
     <AppContext.Provider value={{
+      user, signIn, signOutUser,
       currentView, setCurrentView,
       activeProject, setActiveProject,
       activeFolder, setActiveFolder,
