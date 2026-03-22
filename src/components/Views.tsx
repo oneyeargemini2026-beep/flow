@@ -1201,6 +1201,8 @@ export const TagsView = () => {
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState('#7c6af7');
+  const [editingTagId, setEditingTagId] = useState<string | null>(null);
+  const [editingTagName, setEditingTagName] = useState('');
 
   const handleCreateTag = () => {
     if (!newTagName.trim()) return;
@@ -1214,6 +1216,21 @@ export const TagsView = () => {
     setTags(prev => [...prev, newTag]);
     setNewTagName('');
     setIsAddingTag(false);
+  };
+
+  const handleRenameTag = (tagId: string, newName: string) => {
+    const oldTag = tags.find(t => t.id === tagId);
+    if (!oldTag || oldTag.name === newName) {
+      setEditingTagId(null);
+      return;
+    }
+
+    setTags(prev => prev.map(t => t.id === tagId ? { ...t, name: newName } : t));
+    setTasks(prev => prev.map(t => ({
+      ...t,
+      tags: t.tags.map(tag => tag === oldTag.name ? newName : tag)
+    })));
+    setEditingTagId(null);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetTag: string) => {
@@ -1256,7 +1273,23 @@ export const TagsView = () => {
               >
                 <div className="font-medium text-sm flex items-center gap-2" style={{ color: tag.color }}>
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color }}></span>
-                  {tag.name}
+                  {editingTagId === tag.id ? (
+                    <input
+                      autoFocus
+                      className="bg-bg3 border border-border-strong rounded px-1 py-0.5 text-sm text-text-main outline-none focus:border-accent"
+                      value={editingTagName}
+                      onChange={e => setEditingTagName(e.target.value)}
+                      onBlur={() => handleRenameTag(tag.id, editingTagName)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleRenameTag(tag.id, editingTagName);
+                        if (e.key === 'Escape') setEditingTagId(null);
+                      }}
+                    />
+                  ) : (
+                    <span className="cursor-pointer" onClick={() => { setEditingTagId(tag.id); setEditingTagName(tag.name); }}>
+                      {tag.name}
+                    </span>
+                  )}
                 </div>
                 <div className="text-xs text-text-faint bg-bg3 px-2 py-0.5 rounded-full font-mono">
                   {tagTasks.length}

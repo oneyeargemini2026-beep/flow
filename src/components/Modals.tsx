@@ -406,7 +406,7 @@ export const FocusOverlay = () => {
       
       <div className="font-serif text-[72px] md:text-[96px] text-text-main tracking-[-4px] leading-none mb-4">{m}:{s}</div>
       <div className="text-base md:text-lg text-text-muted mb-8 md:mb-10 max-w-[400px] text-center">
-        {timeLeft === 5 * 60 && !isRunning && sessions > 0 ? 'Break time — well done!' : 'Review Q1 performance report'}
+        {timeLeft === 5 * 60 && !isRunning && sessions > 0 ? 'Break time — well done!' : ''}
       </div>
       
       <div className="flex gap-3 items-center">

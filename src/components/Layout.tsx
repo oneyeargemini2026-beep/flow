@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../store';
 import { ViewType } from '../types';
 import { HexColorPicker } from 'react-colorful';
+import { Sun, Calendar, Inbox, Target, LayoutGrid, CalendarDays, Archive, Tag, LayoutDashboard, History, Trash2, Brain } from 'lucide-react';
 
 export const Sidebar = () => {
   const { currentView, setCurrentView, folders, setFolders, setIsFocusOpen, setIsAddTaskOpen, activeProject, setActiveProject, isSidebarOpen, setIsSidebarOpen, tasks, setTasks, moveProject, renameProject, tags, setTags, activeFolder, setActiveFolder, signOutUser } = useAppContext();
@@ -136,21 +137,21 @@ export const Sidebar = () => {
   const circumference = 2 * Math.PI * 7; // r=7
   const strokeDashoffset = circumference * (1 - progressPercentage);
 
-  const topNavItems: { id: ViewType; icon: string; label: string; badge?: number }[] = [
-    { id: 'today', icon: '☀️', label: 'Today' },
-    { id: 'upcoming', icon: '📅', label: 'Upcoming' },
-    { id: 'inbox', icon: '📥', label: 'Inbox', badge: tasks.filter(t => t.isInbox && !t.deleted && !t.completed).length },
-    { id: 'goals', icon: '🎯', label: 'Goals' },
-    { id: 'matrix', icon: '⊞', label: 'Matrix' },
-    { id: 'calendar', icon: '◫', label: 'Calendar' },
-    { id: 'archive', icon: '🗄', label: 'Archive' },
-    { id: 'tags', icon: '🏷️', label: 'Tags' },
+  const topNavItems: { id: ViewType; icon: React.ReactNode; label: string; badge?: number }[] = [
+    { id: 'today', icon: <Sun size={16} />, label: 'Today' },
+    { id: 'upcoming', icon: <Calendar size={16} />, label: 'Upcoming' },
+    { id: 'inbox', icon: <Inbox size={16} />, label: 'Inbox', badge: tasks.filter(t => t.isInbox && !t.deleted && !t.completed).length },
+    { id: 'goals', icon: <Target size={16} />, label: 'Goals' },
+    { id: 'matrix', icon: <LayoutGrid size={16} />, label: 'Matrix' },
+    { id: 'calendar', icon: <CalendarDays size={16} />, label: 'Calendar' },
+    { id: 'archive', icon: <Archive size={16} />, label: 'Archive' },
+    { id: 'tags', icon: <Tag size={16} />, label: 'Tags' },
   ];
 
-  const bottomNavItems: { id: ViewType; icon: string; label: string; badge?: number }[] = [
-    { id: 'dashboard', icon: '⬡', label: 'Dashboard' },
-    { id: 'history', icon: '📜', label: 'History' },
-    { id: 'trash', icon: '🗑️', label: 'Trash' },
+  const bottomNavItems: { id: ViewType; icon: React.ReactNode; label: string; badge?: number }[] = [
+    { id: 'dashboard', icon: <LayoutDashboard size={16} />, label: 'Dashboard' },
+    { id: 'history', icon: <History size={16} />, label: 'History' },
+    { id: 'trash', icon: <Trash2 size={16} />, label: 'Trash' },
   ];
 
   const handleNavClick = (id: ViewType) => {
@@ -462,11 +463,11 @@ export const Sidebar = () => {
             {topNavItems.map(item => (
               <div 
                 key={item.id}
-                className={`flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] transition-colors relative shrink-0 mb-0 ${currentView === item.id && !activeProject ? 'bg-accent/15 text-accent2' : 'text-text-muted hover:bg-bg3 hover:text-text-main'}`}
+                className={`flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] transition-colors relative shrink-0 mb-0 ${currentView === item.id && !activeProject ? 'bg-accent/15' : 'hover:bg-bg3'}`}
                 onClick={() => handleNavClick(item.id)}
               >
-                <span className="w-4 text-center text-sm">{item.icon}</span>
-                <span>{item.label}</span>
+                <span className="w-4 text-center text-white">{item.icon}</span>
+                <span className="text-white">{item.label}</span>
                 {item.id === 'today' ? (
                   <div className="ml-auto flex items-center justify-center w-5 h-5 relative">
                     <svg width="20" height="20" viewBox="0 0 20 20" className="transform -rotate-90">
@@ -706,11 +707,11 @@ export const Sidebar = () => {
             {bottomNavItems.map(item => (
               <div 
                 key={item.id}
-                className={`flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] transition-colors relative shrink-0 mb-0 ${currentView === item.id && !activeProject ? 'bg-accent/15 text-accent2' : 'text-text-muted hover:bg-bg3 hover:text-text-main'}`}
+                className={`flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] transition-colors relative shrink-0 mb-0 ${currentView === item.id && !activeProject ? 'bg-accent/15' : 'hover:bg-bg3'}`}
                 onClick={() => handleNavClick(item.id)}
               >
-                <span className="w-4 text-center text-sm">{item.icon}</span>
-                <span>{item.label}</span>
+                <span className="w-4 text-center text-white">{item.icon}</span>
+                <span className="text-white">{item.label}</span>
                 {item.badge ? (
                   <span className={`ml-auto font-mono text-[10px] px-1.5 py-[1px] rounded-full ${currentView === item.id && !activeProject ? 'bg-accent/25 text-accent2' : 'bg-bg4 text-text-faint'}`}>
                     {item.badge}
@@ -722,15 +723,13 @@ export const Sidebar = () => {
         </div>
 
         <div className="mt-auto p-3 border-t border-border-subtle">
-          <div className="flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] text-text-muted hover:bg-bg3 hover:text-text-main transition-colors mb-0" onClick={() => { setIsFocusOpen(true); if (window.innerWidth < 768) setIsSidebarOpen(false); }}>
-            <span className="w-4 text-center text-sm">⏱</span>
-            <span>Focus Mode</span>
+          <div className="flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] text-white hover:bg-bg3 transition-colors mb-0" onClick={() => { setIsFocusOpen(true); if (window.innerWidth < 768) setIsSidebarOpen(false); }}>
+            <span className="w-4 text-center"><Brain size={16} /></span>
+            <span className="text-white">Focus Mode</span>
           </div>
-          <div className="flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] text-text-muted hover:bg-bg3 hover:text-red-400 transition-colors mt-1" onClick={() => { signOutUser(); if (window.innerWidth < 768) setIsSidebarOpen(false); }}>
-            <span className="w-4 text-center text-sm">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-            </span>
-            <span>Sign Out</span>
+          <div className="flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] text-red-500 hover:bg-red-500/10 transition-colors mt-1" onClick={() => { signOutUser(); if (window.innerWidth < 768) setIsSidebarOpen(false); }}>
+            <span className="w-4 text-center"><Trash2 size={16} /></span>
+            <span className="text-red-500">Sign Out</span>
           </div>
         </div>
       </aside>

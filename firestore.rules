@@ -60,42 +60,42 @@ service cloud.firestore {
 
     // Tasks Collection
     match /tasks/{taskId} {
-      allow read: if isAuthenticated() && (resource == null || request.auth.uid == resource.data.userId);
-      allow create: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == request.resource.data.userId;
-      allow update: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == resource.data.userId && request.resource.data.userId == resource.data.userId;
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read: if isDocOwner();
+      allow create: if isDocOwner() && isValidDocument(request.resource.data);
+      allow update: if isDocOwner() && isValidDocument(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
     }
 
     // Folders Collection
     match /folders/{folderId} {
-      allow read: if isAuthenticated() && (resource == null || request.auth.uid == resource.data.userId);
-      allow create: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == request.resource.data.userId;
-      allow update: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == resource.data.userId && request.resource.data.userId == resource.data.userId;
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read: if isDocOwner();
+      allow create: if isDocOwner() && isValidDocument(request.resource.data);
+      allow update: if isDocOwner() && isValidDocument(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
     }
 
     // Tags Collection
     match /tags/{tagId} {
-      allow read: if isAuthenticated() && (resource == null || request.auth.uid == resource.data.userId);
-      allow create: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == request.resource.data.userId;
-      allow update: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == resource.data.userId && request.resource.data.userId == resource.data.userId;
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read: if isDocOwner();
+      allow create: if isDocOwner() && isValidDocument(request.resource.data);
+      allow update: if isDocOwner() && isValidDocument(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
     }
 
     // Goals Collection
     match /goals/{goalId} {
-      allow read: if isAuthenticated() && (resource == null || request.auth.uid == resource.data.userId);
-      allow create: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == request.resource.data.userId;
-      allow update: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == resource.data.userId && request.resource.data.userId == resource.data.userId;
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read: if isDocOwner();
+      allow create: if isDocOwner() && isValidDocument(request.resource.data);
+      allow update: if isDocOwner() && isValidDocument(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
     }
 
     // Archives Collection
     match /archives/{archiveId} {
-      allow read: if isAuthenticated() && (resource == null || request.auth.uid == resource.data.userId);
-      allow create: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == request.resource.data.userId;
-      allow update: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == resource.data.userId && request.resource.data.userId == resource.data.userId;
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read: if isDocOwner();
+      allow create: if isDocOwner() && isValidDocument(request.resource.data);
+      allow update: if isDocOwner() && isValidDocument(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
     }
 
     // MatrixConfigs Collection

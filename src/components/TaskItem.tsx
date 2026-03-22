@@ -20,12 +20,12 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
   const prevExpandedRef = React.useRef(expanded);
   const isDeletingRef = React.useRef(false);
 
-  // Sync local task when entering edit mode
+  // Sync local task when task changes and not expanded
   React.useEffect(() => {
-    if (expanded && !prevExpandedRef.current) {
+    if (!expanded) {
       setLocalTask(task);
     }
-  }, [expanded, task]);
+  }, [task, expanded]);
 
   React.useEffect(() => {
     if (prevExpandedRef.current && !expanded && !isDeletingRef.current) {
@@ -314,7 +314,10 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
           {expanded ? (
             <select
               value={localTask.project || ''}
-              onChange={(e) => setLocalTask(prev => ({ ...prev, project: e.target.value || undefined }))}
+              onChange={(e) => {
+                console.log('Project changed:', e.target.value);
+                setLocalTask(prev => ({ ...prev, project: e.target.value || undefined }));
+              }}
               onClick={(e) => e.stopPropagation()}
               className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none cursor-pointer max-w-[100px]"
             >
