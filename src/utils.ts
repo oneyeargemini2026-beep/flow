@@ -24,3 +24,19 @@ export const parseTaskInput = (input: string) => {
   const title = input.replace(tagRegex, '').trim();
   return { title, tags };
 };
+
+export const sanitizeData = (data: any): any => {
+  if (data === null || typeof data !== 'object') {
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data.map(sanitizeData);
+  }
+  const sanitized: any = {};
+  Object.keys(data).forEach(key => {
+    if (data[key] !== undefined) {
+      sanitized[key] = sanitizeData(data[key]);
+    }
+  });
+  return sanitized;
+};

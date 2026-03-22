@@ -12,6 +12,10 @@ export async function signInWithGoogle() {
     // if you have access to the state, but usually, it's handled by the App component.
     return user;
   } catch (error: any) {
+    if (error.code === 'auth/popup-closed-by-user') {
+      console.log("Sign in popup closed by user");
+      return null;
+    }
     console.error(error.code, error.message)
     throw error;
   }

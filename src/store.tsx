@@ -1,10 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Task, Folder, Archive, ViewType, MatrixConfig, Tag, Goal } from './types';
-import { getLocalDateString } from './utils';
+import { getLocalDateString, sanitizeData } from './utils';
 import { auth, db } from '@/src/lib/firebase';
 import { signInWithGoogle } from '@/src/lib/auth';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
-import { collection, query, where, onSnapshot, writeBatch, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, writeBatch, doc, setDoc, updateDoc, getDocFromServer } from 'firebase/firestore';
+
+async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.error("Please check your Firebase configuration. The client is offline.");
+    }
+  }
+}
+testConnection();
 
 const initialFolders: Folder[] = [
   { id: 'f1', name: 'Work', color: '#7c6af7', open: true, projects: ['Q2 Launch', 'Hiring'] },
@@ -74,8 +85,13 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
     operationType,
     path
   }
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  // We don't throw here to avoid crashing the whole app, but we log it clearly
+  const errorMsg = JSON.stringify(errInfo);
+  console.error('Firestore Error: ', errorMsg);
+  
+  // Only throw if it's a permission error to be caught by ErrorBoundary
+  if (errInfo.error.includes('Missing or insufficient permissions')) {
+    throw new Error(errorMsg);
+  }
 }
 
 function useSyncedCollection<T extends { id: string }>(
@@ -100,7 +116,7 @@ function useSyncedCollection<T extends { id: string }>(
         initialData.forEach(item => {
           const uniqueId = `${item.id}-${userId}`;
           const docRef = doc(db, collectionName, uniqueId);
-          batch.set(docRef, { ...item, id: uniqueId, userId });
+          batch.set(docRef, sanitizeData({ ...item, id: uniqueId, userId }));
         });
         batch.commit().catch(err => handleFirestoreError(err, OperationType.WRITE, collectionName));
         setItems(initialData.map(item => ({ ...item, id: `${item.id}-${userId}` })));
@@ -135,11 +151,11 @@ function useSyncedCollection<T extends { id: string }>(
       const batch = writeBatch(db);
       added.forEach(item => {
         const docRef = doc(db, collectionName, item.id);
-        batch.set(docRef, { ...item, userId });
+        batch.set(docRef, sanitizeData({ ...item, userId }));
       });
       modified.forEach(item => {
         const docRef = doc(db, collectionName, item.id);
-        batch.update(docRef, { ...item, userId });
+        batch.update(docRef, sanitizeData({ ...item, userId }));
       });
       removed.forEach(item => {
         const docRef = doc(db, collectionName, item.id);
@@ -174,7 +190,7 @@ function useSyncedDocument<T>(
       if (snapshot.exists()) {
         setItem(snapshot.data() as T);
       } else if (!initializedRef.current) {
-        setDoc(docRef, { ...initialData, userId }).catch(err => handleFirestoreError(err, OperationType.WRITE, `${collectionName}/${docId}`));
+        setDoc(docRef, sanitizeData({ ...initialData, userId })).catch(err => handleFirestoreError(err, OperationType.WRITE, `${collectionName}/${docId}`));
         setItem(initialData);
       }
       initializedRef.current = true;
@@ -191,7 +207,7 @@ function useSyncedDocument<T>(
       
       if (JSON.stringify(prev) !== JSON.stringify(newItem)) {
         const docRef = doc(db, collectionName, docId);
-        updateDoc(docRef, { ...newItem, userId }).catch(err => handleFirestoreError(err, OperationType.UPDATE, `${collectionName}/${docId}`));
+        updateDoc(docRef, sanitizeData({ ...newItem, userId })).catch(err => handleFirestoreError(err, OperationType.UPDATE, `${collectionName}/${docId}`));
       }
       return newItem;
     });
@@ -254,7 +270,10 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   const signIn = async () => {
     try {
       await signInWithGoogle();
-    } catch (error) {
+    } catch (error: any) {
+      if (error.code === 'auth/popup-closed-by-user') {
+        return;
+      }
       console.error("Error signing in", error);
     }
   };

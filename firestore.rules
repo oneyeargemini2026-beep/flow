@@ -1,69 +1,109 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: tasks
+    // Fields:
+    //   - userId: string (required) - Owner's UID
+    //   - title: string (required) - Task title
+    //   - completed: bool (required) - Completion status
+    //
+    // Collection: folders
+    // Fields:
+    //   - userId: string (required) - Owner's UID
+    //   - name: string (required) - Folder name
+    //
+    // Collection: tags
+    // Fields:
+    //   - userId: string (required) - Owner's UID
+    //   - name: string (required) - Tag name
+    //
+    // Collection: matrixConfigs
+    // Fields:
+    //   - userId: string (required) - Owner's UID
+    //   - q1, q2, q3, q4: map (required) - Quadrant configs
+    //
+    // ===============================================================
+
     // Helper Functions
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    function isOwner() {
-      return isAuthenticated() && request.auth.uid == resource.data.userId;
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
     }
     
-    function isCreatingOwner() {
-      return isAuthenticated() && request.auth.uid == request.resource.data.userId;
+    function isDocOwner() {
+      return isAuthenticated() && (
+        (resource != null && request.auth.uid == resource.data.userId) ||
+        (resource == null && request.auth.uid == request.resource.data.userId)
+      );
     }
 
-    function isUpdatingOwner() {
-      return isAuthenticated() && request.auth.uid == request.resource.data.userId && request.auth.uid == resource.data.userId;
+    function uidUnchanged() {
+      return !('userId' in request.resource.data) ||
+        request.resource.data.userId == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return resource == null || request.resource.data.userId == resource.data.userId;
+    }
+
+    // Generic validator for documents with userId
+    function isValidDocument(data) {
+      return data.userId is string && data.userId.size() > 0;
     }
 
     // Tasks Collection
     match /tasks/{taskId} {
-      allow read: if isOwner();
-      allow create: if isCreatingOwner();
-      allow update: if isUpdatingOwner();
-      allow delete: if isOwner();
+      allow read: if isAuthenticated() && (resource == null || request.auth.uid == resource.data.userId);
+      allow create: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == resource.data.userId && request.resource.data.userId == resource.data.userId;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
     }
 
     // Folders Collection
     match /folders/{folderId} {
-      allow read: if isOwner();
-      allow create: if isCreatingOwner();
-      allow update: if isUpdatingOwner();
-      allow delete: if isOwner();
+      allow read: if isAuthenticated() && (resource == null || request.auth.uid == resource.data.userId);
+      allow create: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == resource.data.userId && request.resource.data.userId == resource.data.userId;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
     }
 
     // Tags Collection
     match /tags/{tagId} {
-      allow read: if isOwner();
-      allow create: if isCreatingOwner();
-      allow update: if isUpdatingOwner();
-      allow delete: if isOwner();
+      allow read: if isAuthenticated() && (resource == null || request.auth.uid == resource.data.userId);
+      allow create: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == resource.data.userId && request.resource.data.userId == resource.data.userId;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
     }
 
     // Goals Collection
     match /goals/{goalId} {
-      allow read: if isOwner();
-      allow create: if isCreatingOwner();
-      allow update: if isUpdatingOwner();
-      allow delete: if isOwner();
+      allow read: if isAuthenticated() && (resource == null || request.auth.uid == resource.data.userId);
+      allow create: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == resource.data.userId && request.resource.data.userId == resource.data.userId;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
     }
 
     // Archives Collection
     match /archives/{archiveId} {
-      allow read: if isOwner();
-      allow create: if isCreatingOwner();
-      allow update: if isUpdatingOwner();
-      allow delete: if isOwner();
+      allow read: if isAuthenticated() && (resource == null || request.auth.uid == resource.data.userId);
+      allow create: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == resource.data.userId && request.resource.data.userId == resource.data.userId;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
     }
 
     // MatrixConfigs Collection
     match /matrixConfigs/{configId} {
       allow read: if isAuthenticated() && (request.auth.uid == configId || (resource != null && request.auth.uid == resource.data.userId));
-      allow create: if isCreatingOwner() && request.auth.uid == configId;
-      allow update: if isUpdatingOwner() && request.auth.uid == configId;
-      allow delete: if isOwner() && request.auth.uid == configId;
+      allow create: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == configId && request.auth.uid == request.resource.data.userId;
+      allow update: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == configId && request.auth.uid == resource.data.userId && request.resource.data.userId == resource.data.userId;
+      allow delete: if isAuthenticated() && request.auth.uid == configId && request.auth.uid == resource.data.userId;
     }
   }
 }

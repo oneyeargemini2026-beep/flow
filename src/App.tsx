@@ -3,6 +3,7 @@ import { AppProvider, useAppContext } from './store';
 import { Sidebar, Topbar } from './components/Layout';
 import { TodayView, InboxView, UpcomingView, DashboardView, MatrixView, CalendarView, ArchiveView, TrashView, HistoryView, TagsView, FolderView, ProjectView, GoalsView } from './components/Views';
 import { AddTaskModal, ProcessInboxModal, FocusOverlay } from './components/Modals';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const LoginView = () => {
   const { signIn } = useAppContext();
@@ -168,8 +169,10 @@ const AppContent = () => {
 
 export default function App() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </ErrorBoundary>
   );
 }
