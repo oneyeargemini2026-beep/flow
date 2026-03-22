@@ -60,10 +60,10 @@ service cloud.firestore {
 
     // MatrixConfigs Collection
     match /matrixConfigs/{configId} {
-      allow read: if isOwner();
-      allow create: if isCreatingOwner();
-      allow update: if isUpdatingOwner();
-      allow delete: if isOwner();
+      allow read: if isAuthenticated() && (request.auth.uid == configId || (resource != null && request.auth.uid == resource.data.userId));
+      allow create: if isCreatingOwner() && request.auth.uid == configId;
+      allow update: if isUpdatingOwner() && request.auth.uid == configId;
+      allow delete: if isOwner() && request.auth.uid == configId;
     }
   }
 }

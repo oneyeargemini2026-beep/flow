@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Task, Folder, Archive, ViewType, MatrixConfig, Tag, Goal } from './types';
 import { getLocalDateString } from './utils';
-import { auth, db } from './firebase';
-import { onAuthStateChanged, User, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { auth, db } from '@/src/lib/firebase';
+import { signInWithGoogle } from '@/src/lib/auth';
+import { onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { collection, query, where, onSnapshot, writeBatch, doc, setDoc, updateDoc } from 'firebase/firestore';
 
 const initialFolders: Folder[] = [
@@ -26,6 +27,57 @@ const initialMatrixConfig: MatrixConfig = {
   q4: { title: 'Eliminate', subtitle: 'NOT URGENT · NOT IMPORTANT', color: '#8888a0' }
 };
 
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+    tenantId: string | null | undefined;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  // We don't throw here to avoid crashing the whole app, but we log it clearly
+}
+
 function useSyncedCollection<T extends { id: string }>(
   collectionName: string,
   userId: string | undefined,
@@ -43,21 +95,22 @@ function useSyncedCollection<T extends { id: string }>(
     const q = query(collection(db, collectionName), where('userId', '==', userId));
     const unsub = onSnapshot(q, (snapshot) => {
       if (snapshot.empty && !initializedRef.current && initialData.length > 0) {
-        // Initialize default data for new users
+        // Initialize default data for new users with UNIQUE IDs to avoid conflicts
         const batch = writeBatch(db);
         initialData.forEach(item => {
-          const docRef = doc(db, collectionName, item.id);
-          batch.set(docRef, { ...item, userId });
+          const uniqueId = `${item.id}-${userId}`;
+          const docRef = doc(db, collectionName, uniqueId);
+          batch.set(docRef, { ...item, id: uniqueId, userId });
         });
-        batch.commit().catch(console.error);
-        setItems(initialData);
+        batch.commit().catch(err => handleFirestoreError(err, OperationType.WRITE, collectionName));
+        setItems(initialData.map(item => ({ ...item, id: `${item.id}-${userId}` })));
       } else {
         const newItems = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as T));
         setItems(newItems);
       }
       initializedRef.current = true;
     }, (error) => {
-      console.error(`Error fetching ${collectionName}:`, error);
+      handleFirestoreError(error, OperationType.LIST, collectionName);
     });
     return unsub;
   }, [userId, collectionName]);
@@ -92,7 +145,7 @@ function useSyncedCollection<T extends { id: string }>(
         const docRef = doc(db, collectionName, item.id);
         batch.delete(docRef);
       });
-      batch.commit().catch(console.error);
+      batch.commit().catch(err => handleFirestoreError(err, OperationType.WRITE, collectionName));
 
       return newItems;
     });
@@ -121,12 +174,12 @@ function useSyncedDocument<T>(
       if (snapshot.exists()) {
         setItem(snapshot.data() as T);
       } else if (!initializedRef.current) {
-        setDoc(docRef, { ...initialData, userId }).catch(console.error);
+        setDoc(docRef, { ...initialData, userId }).catch(err => handleFirestoreError(err, OperationType.WRITE, `${collectionName}/${docId}`));
         setItem(initialData);
       }
       initializedRef.current = true;
     }, (error) => {
-      console.error(`Error fetching ${collectionName}/${docId}:`, error);
+      handleFirestoreError(error, OperationType.GET, `${collectionName}/${docId}`);
     });
     return unsub;
   }, [userId, collectionName, docId]);
@@ -138,7 +191,7 @@ function useSyncedDocument<T>(
       
       if (JSON.stringify(prev) !== JSON.stringify(newItem)) {
         const docRef = doc(db, collectionName, docId);
-        updateDoc(docRef, { ...newItem, userId }).catch(console.error);
+        updateDoc(docRef, { ...newItem, userId }).catch(err => handleFirestoreError(err, OperationType.UPDATE, `${collectionName}/${docId}`));
       }
       return newItem;
     });
@@ -199,9 +252,8 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   }, []);
 
   const signIn = async () => {
-    const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      await signInWithGoogle();
     } catch (error) {
       console.error("Error signing in", error);
     }
