@@ -457,12 +457,12 @@ export const Sidebar = () => {
         </div>
 
         <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar">
-          <div className="p-3 pb-1 shrink-0">
+          <div className="p-4 pb-2 shrink-0">
             <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-faint px-2 pb-2">Views</div>
             {topNavItems.map(item => (
               <div 
                 key={item.id}
-                className={`flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] transition-colors relative shrink-0 mb-0 ${currentView === item.id && !activeProject ? 'bg-accent/15 text-accent2' : 'text-text-muted hover:bg-bg3 hover:text-text-main'}`}
+                className={`flex items-center gap-3 p-2.5 px-3 rounded-xl cursor-pointer text-[14px] transition-all relative shrink-0 mb-0.5 ${currentView === item.id && !activeProject ? 'bg-accent/10 text-accent2 font-medium' : 'text-text-muted hover:bg-bg3 hover:text-text-main'}`}
                 onClick={() => handleNavClick(item.id)}
               >
                 <span className="w-4 text-center text-sm">{item.icon}</span>
@@ -487,7 +487,7 @@ export const Sidebar = () => {
                     </span>
                   </div>
                 ) : item.badge ? (
-                  <span className={`ml-auto font-mono text-[10px] px-1.5 py-[1px] rounded-full ${currentView === item.id && !activeProject ? 'bg-accent/25 text-accent2' : 'bg-bg4 text-text-faint'}`}>
+                  <span className={`ml-auto font-mono text-[10px] px-2 py-[2px] rounded-full ${currentView === item.id && !activeProject ? 'bg-accent/20 text-accent2' : 'bg-bg4 text-text-faint'}`}>
                     {item.badge}
                   </span>
                 ) : null}
@@ -495,12 +495,12 @@ export const Sidebar = () => {
             ))}
           </div>
 
-          <div className="p-3 pb-1 mt-0 border-t-0">
+          <div className="p-4 pb-2 mt-2 border-t-0">
             <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-faint px-2 pb-2">Folders</div>
             {folders.filter(f => !f.deleted).map(folder => (
               <div 
                 key={folder.id} 
-                className={`flex flex-col items-stretch mb-0 transition-all ${draggedFolderId === folder.id ? 'opacity-30 border-dashed border-border-strong bg-transparent' : ''} ${dragOverFolderId === folder.id ? 'border-t-accent border-t-2 bg-bg3 rounded-lg' : ''} ${deletingFolderId === folder.id ? 'animate-disintegrate pointer-events-none' : ''}`}
+                className={`flex flex-col items-stretch mb-0 transition-all ${draggedFolderId === folder.id ? 'opacity-30 border-dashed border-border-strong bg-transparent' : ''} ${dragOverFolderId === folder.id ? 'border-t-accent border-t-2 bg-bg3 rounded-xl' : ''} ${deletingFolderId === folder.id ? 'animate-disintegrate pointer-events-none' : ''}`}
                 draggable
                 onDragStart={(e) => handleFolderDragStart(e, folder.id)}
                 onDragEnd={handleFolderDragEnd}
@@ -509,7 +509,7 @@ export const Sidebar = () => {
                 onDrop={(e) => handleFolderDrop(e, folder.id)}
               >
                 <div 
-                  className={`flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] transition-colors group ${activeFolder === folder.name && currentView === 'folder' ? 'bg-accent/15 text-accent2' : 'text-text-muted hover:bg-bg3 hover:text-text-main'}`}
+                  className={`flex items-center gap-3 p-2.5 px-3 rounded-xl cursor-pointer text-[14px] transition-all group ${activeFolder === folder.name && currentView === 'folder' ? 'bg-accent/10 text-accent2 font-medium' : 'text-text-muted hover:bg-bg3 hover:text-text-main'}`}
                   onClick={(e) => { 
                     e.stopPropagation(); 
                     setActiveFolder(folder.name);
@@ -537,7 +537,7 @@ export const Sidebar = () => {
                         if (e.key === 'Escape') setEditingFolderId(null);
                       }}
                       onClick={e => e.stopPropagation()}
-                      className="flex-1 bg-transparent border-none outline-none text-[13.5px] text-text-main"
+                      className="flex-1 bg-transparent border-none outline-none text-[14px] text-text-main"
                     />
                   ) : (
                     <div 
@@ -577,7 +577,7 @@ export const Sidebar = () => {
                   </span>
                 </div>
                 {folder.open && (
-                  <div className="flex pl-7 py-1 flex-col gap-0.5">
+                  <div className="flex pl-8 py-1 flex-col gap-0.5">
                     {folder.projects.map((proj, index) => {
                         const pendingCount = tasks.filter(t => t.project === proj && !t.completed && !t.deleted).length;
                         const projDeleteId = `${folder.id}-${proj}`;
@@ -588,12 +588,12 @@ export const Sidebar = () => {
                         onDragStart={(e) => handleProjectDragStart(e, proj, folder.id)}
                         onDragOver={(e) => handleProjectDragOver(e, proj)}
                         onDrop={(e) => handleProjectDrop(e, proj, folder.id)}
-                        className={`flex items-center gap-2 p-1.5 px-2.5 rounded-md cursor-pointer text-[12.5px] transition-colors border-t-2 group/project ${dragOverProjectId === proj ? 'border-t-accent' : 'border-t-transparent'} ${activeProject === proj ? 'text-accent2' : 'text-text-faint hover:text-text-muted'}`}
+                        className={`flex items-center gap-2 p-2 px-3 rounded-lg cursor-pointer text-[13px] transition-colors border-t-2 group/project ${dragOverProjectId === proj ? 'border-t-accent' : 'border-t-transparent'} ${activeProject === proj ? 'text-accent2 font-medium' : 'text-text-faint hover:text-text-muted hover:bg-bg3'}`}
                         onClick={() => { setActiveProject(proj); setCurrentView('project'); if (window.innerWidth < 768) setIsSidebarOpen(false); }}
                       >
                         <span>◈ {proj}</span>
                         {pendingCount > 0 && (
-                            <span className="ml-auto text-[10px] bg-bg4 text-text-faint px-1.5 rounded-full">{pendingCount}</span>
+                            <span className="ml-auto text-[10px] bg-bg4 text-text-faint px-2 py-[1px] rounded-full">{pendingCount}</span>
                         )}
                         <button
                             className={`delete-btn ml-auto p-0.5 rounded transition-colors ${confirmDeleteId === projDeleteId ? 'opacity-100 text-red-500 bg-red-500/10' : 'opacity-0 group-hover/project:opacity-100 text-text-faint hover:text-red-500 hover:bg-red-500/10'}`}
@@ -627,7 +627,7 @@ export const Sidebar = () => {
                       </div>
                     )})}
                     {creatingProjectInFolder === folder.id ? (
-                      <div className="flex items-center gap-1.5 p-1.5 px-2.5 rounded-md bg-bg3">
+                      <div className="flex items-center gap-1.5 p-2 px-3 rounded-lg bg-bg3">
                         <input 
                           autoFocus
                           type="text" 
@@ -643,7 +643,7 @@ export const Sidebar = () => {
                       </div>
                     ) : (
                       <div 
-                        className="flex items-center gap-1.5 p-1.5 px-2.5 rounded-md cursor-pointer text-xs text-text-faint hover:text-text-muted hover:bg-bg3 transition-colors"
+                        className="flex items-center gap-1.5 p-2 px-3 rounded-lg cursor-pointer text-xs text-text-faint hover:text-text-muted hover:bg-bg3 transition-colors"
                         onClick={(e) => { e.stopPropagation(); setCreatingProjectInFolder(folder.id); }}
                       >
                         <span>+</span> Add project
@@ -654,7 +654,7 @@ export const Sidebar = () => {
               </div>
             ))}
             {isCreatingFolder ? (
-              <div className="flex flex-col gap-2 p-2 px-2.5 mt-1 bg-bg3 rounded-lg border border-border-strong">
+              <div className="flex flex-col gap-2 p-3 px-3 mt-1 bg-bg3 rounded-xl border border-border-strong">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: newFolderColor }}></div>
                   <input 
@@ -667,7 +667,7 @@ export const Sidebar = () => {
                       if (e.key === 'Escape') setIsCreatingFolder(false);
                     }}
                     placeholder="Folder name..."
-                    className="flex-1 bg-transparent border-none outline-none text-[13.5px] text-text-main placeholder:text-text-faint"
+                    className="flex-1 bg-transparent border-none outline-none text-[14px] text-text-main placeholder:text-text-faint"
                   />
                 </div>
                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
@@ -694,7 +694,7 @@ export const Sidebar = () => {
               </div>
             ) : (
               <div 
-                className="flex items-center gap-2 p-2 px-2.5 rounded-lg cursor-pointer text-[13px] text-text-faint hover:bg-bg3 hover:text-text-muted transition-colors mt-1"
+                className="flex items-center gap-2 p-2 px-3 rounded-xl cursor-pointer text-[13px] text-text-faint hover:bg-bg3 hover:text-text-muted transition-colors mt-1"
                 onClick={() => setIsCreatingFolder(true)}
               >
                 <span className="text-base leading-none">+</span> New folder
@@ -702,17 +702,17 @@ export const Sidebar = () => {
             )}
           </div>
 
-          <div className="p-3 pt-1 shrink-0 mt-2 border-t border-border-subtle">
+          <div className="p-4 pt-2 shrink-0 mt-2 border-t border-border-subtle">
             {bottomNavItems.map(item => (
               <div 
                 key={item.id}
-                className={`flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] transition-colors relative shrink-0 mb-0 ${currentView === item.id && !activeProject ? 'bg-accent/15 text-accent2' : 'text-text-muted hover:bg-bg3 hover:text-text-main'}`}
+                className={`flex items-center gap-3 p-2.5 px-3 rounded-xl cursor-pointer text-[14px] transition-all relative shrink-0 mb-0.5 ${currentView === item.id && !activeProject ? 'bg-accent/10 text-accent2 font-medium' : 'text-text-muted hover:bg-bg3 hover:text-text-main'}`}
                 onClick={() => handleNavClick(item.id)}
               >
                 <span className="w-4 text-center text-sm">{item.icon}</span>
                 <span>{item.label}</span>
                 {item.badge ? (
-                  <span className={`ml-auto font-mono text-[10px] px-1.5 py-[1px] rounded-full ${currentView === item.id && !activeProject ? 'bg-accent/25 text-accent2' : 'bg-bg4 text-text-faint'}`}>
+                  <span className={`ml-auto font-mono text-[10px] px-2 py-[2px] rounded-full ${currentView === item.id && !activeProject ? 'bg-accent/20 text-accent2' : 'bg-bg4 text-text-faint'}`}>
                     {item.badge}
                   </span>
                 ) : null}
@@ -721,18 +721,19 @@ export const Sidebar = () => {
           </div>
         </div>
 
-        <div className="mt-auto p-3 border-t border-border-subtle">
-          <div className="flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] text-text-muted hover:bg-bg3 hover:text-text-main transition-colors mb-0" onClick={() => { setIsFocusOpen(true); if (window.innerWidth < 768) setIsSidebarOpen(false); }}>
+        <div className="mt-auto p-4 border-t border-border-subtle">
+          <div className="flex items-center gap-3 p-2.5 px-3 rounded-xl cursor-pointer text-[14px] text-text-muted hover:bg-bg3 hover:text-text-main transition-all mb-0.5" onClick={() => { setIsFocusOpen(true); if (window.innerWidth < 768) setIsSidebarOpen(false); }}>
             <span className="w-4 text-center text-sm">⏱</span>
             <span>Focus Mode</span>
           </div>
-          <div className="flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] text-text-muted hover:bg-bg3 hover:text-red-400 transition-colors mt-1" onClick={() => { signOutUser(); if (window.innerWidth < 768) setIsSidebarOpen(false); }}>
+          <div className="flex items-center gap-3 p-2.5 px-3 rounded-xl cursor-pointer text-[14px] text-text-muted hover:bg-bg3 hover:text-red-400 transition-all mt-1" onClick={() => { signOutUser(); if (window.innerWidth < 768) setIsSidebarOpen(false); }}>
             <span className="w-4 text-center text-sm">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
             </span>
             <span>Sign Out</span>
           </div>
         </div>
+
       </aside>
 
       {/* Custom Color Picker Popover */}

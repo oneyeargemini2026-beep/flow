@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { AppProvider, useAppContext } from './store';
-import { Sidebar, Topbar } from './components/Layout';
+import { Topbar } from './components/Layout';
+import Sidebar from './components/Sidebar';
 import { TodayView, InboxView, UpcomingView, DashboardView, MatrixView, CalendarView, ArchiveView, TrashView, HistoryView, TagsView, FolderView, ProjectView, GoalsView } from './components/Views';
 import { AddTaskModal, ProcessInboxModal, FocusOverlay } from './components/Modals';
 import { ErrorBoundary } from './components/ErrorBoundary';

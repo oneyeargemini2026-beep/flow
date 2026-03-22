@@ -6,10 +6,10 @@ import confetti from 'canvas-confetti';
 import { motion } from 'motion/react';
 
 const priorityColors: Record<Priority, string> = {
-  p1: 'text-p1 bg-p1/10',
-  p2: 'text-p2 bg-p2/10',
-  p3: 'text-p3 bg-p3/10',
-  p4: 'text-p4 bg-p4/10',
+  p1: 'text-error bg-error/10',
+  p2: 'text-warning bg-warning/10',
+  p3: 'text-primary bg-primary/10',
+  p4: 'text-on-surface-variant bg-surface-variant/50',
 };
 
 export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
@@ -64,7 +64,7 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
       const newTag = {
         id: `tag-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: tagName,
-        color: '#7c6af7' // Default color
+        color: '#cdbdff' // Default color
       };
       setTags(prev => [...prev, newTag]);
     }
@@ -89,7 +89,7 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
         particleCount: 40,
         spread: 50,
         origin: { x, y },
-        colors: ['#22c55e', '#7c6af7', '#ffffff'],
+        colors: ['#cdbdff', '#7c6af7', '#ffffff'],
         disableForReducedMotion: true,
         zIndex: 100,
       });
@@ -150,7 +150,7 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
         particleCount: 20,
         spread: 40,
         origin: { x, y },
-        colors: ['#22c55e', '#7c6af7', '#ffffff'],
+        colors: ['#cdbdff', '#7c6af7', '#ffffff'],
         disableForReducedMotion: true,
         zIndex: 100,
       });
@@ -218,21 +218,10 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
         const newTasks = [...prev];
         const [draggedTask] = newTasks.splice(draggedIndex, 1);
         
-        // If we are in a project view, sync the section to the target task's section
-        // This allows dragging between sections to work as expected
         const updatedDraggedTask = { 
           ...draggedTask, 
           section: task.section 
         };
-        
-        // Adjust target index if needed (if we removed an item before it)
-        // Actually splice handles the removal, so targetIndex might refer to a different item if we don't adjust?
-        // No, findIndex was on 'prev'. 
-        // If draggedIndex < targetIndex, the item at targetIndex in 'prev' is now at targetIndex-1 in 'newTasks'.
-        // So we should insert at targetIndex-1?
-        // Let's use the logic: we want to insert *before* the target task (or after?).
-        // Usually drop on top half = before, bottom half = after.
-        // But here we just drop on the item. Let's insert *before* for simplicity.
         
         let insertIndex = targetIndex;
         if (draggedIndex < targetIndex) {
@@ -245,6 +234,8 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
     }
   };
 
+  const isOverdue = task.dueDate && task.dueDate < getLocalDateString() && !task.completed;
+
   return (
     <div 
       draggable={!expanded}
@@ -253,60 +244,67 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`flex items-start gap-3 p-2.5 px-3.5 rounded-lg cursor-pointer transition-all relative mb-0.5 border group ${expanded ? 'bg-bg2 border-border-strong' : 'border-transparent hover:bg-bg2 hover:border-border-subtle'} ${(expanded ? localTask.completed : task.completed) ? 'opacity-60' : ''} ${isDragging ? 'opacity-30 border-dashed border-border-strong bg-transparent' : ''} ${isDragOver ? 'border-t-accent border-t-2 bg-bg3' : ''} ${isDeleting ? 'animate-disintegrate pointer-events-none' : ''}`}
+      className={`flex items-start gap-3 p-3 px-4 rounded-2xl cursor-pointer transition-all relative mb-1.5 border group ${expanded ? 'bg-surface-container-high border-outline-variant shadow-xl z-10' : 'border-transparent hover:bg-surface-container-high hover:border-outline-variant/30'} ${(expanded ? localTask.completed : task.completed) ? 'opacity-50' : ''} ${isDragging ? 'opacity-30 border-dashed border-outline-variant bg-transparent' : ''} ${isDragOver ? 'border-t-primary border-t-2 bg-surface-container-high' : ''} ${isDeleting ? 'animate-disintegrate pointer-events-none' : ''}`}
       onClick={() => setExpanded(!expanded)}
     >
-      <div className="text-text-muted text-xs cursor-grab opacity-100 md:opacity-0 md:group-hover:opacity-100 mt-0.5 transition-opacity absolute left-1">⠿</div>
+      <div className="text-on-surface-variant/30 text-xs cursor-grab opacity-100 md:opacity-0 md:group-hover:opacity-100 mt-1 transition-opacity absolute left-1.5">
+        <span className="material-symbols-outlined text-[18px]">drag_indicator</span>
+      </div>
+
       <motion.div 
-        className={`w-[17px] h-[17px] rounded-full border-[1.5px] shrink-0 mt-0.5 transition-colors cursor-pointer flex items-center justify-center ml-3 ${(expanded ? localTask.completed : task.completed) ? 'bg-green border-green' : 'border-text-faint hover:border-accent'}`}
+        className={`w-5 h-5 rounded-full border-2 shrink-0 mt-0.5 transition-all cursor-pointer flex items-center justify-center ml-4 ${(expanded ? localTask.completed : task.completed) ? 'bg-primary border-primary shadow-lg shadow-primary/30' : 'border-outline hover:border-primary'}`}
         onClick={toggleCheck}
         whileTap={{ scale: 0.8 }}
-        animate={(expanded ? localTask.completed : task.completed) ? { scale: [1, 1.2, 1] } : { scale: 1 }}
-        transition={{ duration: 0.3 }}
+        animate={(expanded ? localTask.completed : task.completed) ? { scale: [1, 1.1, 1] } : { scale: 1 }}
+        transition={{ duration: 0.2 }}
       >
         {(expanded ? localTask.completed : task.completed) && (
           <motion.span 
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-[10px] text-white font-bold leading-none"
+            className="material-symbols-outlined text-[14px] text-on-primary font-bold"
           >
-            ✓
+            check
           </motion.span>
         )}
       </motion.div>
+
       <div className="flex-1 min-w-0">
         {expanded ? (
           <input 
             type="text" 
             value={localTask.title} 
             onChange={(e) => setLocalTask(prev => ({ ...prev, title: e.target.value }))}
-            className="text-sm mb-[3px] bg-transparent border-none outline-none w-full text-text-main font-medium placeholder:text-text-faint"
+            className="text-sm mb-1 bg-transparent border-none outline-none w-full text-on-surface font-bold placeholder:text-on-surface-variant/40"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 setExpanded(false);
               }
             }}
-            placeholder="Task title"
+            placeholder="What needs to be done?"
           />
         ) : (
-          <div className={`text-sm mb-[3px] ${task.completed ? 'line-through text-text-faint' : 'text-text-main'}`}>{task.title}</div>
+          <div className={`text-sm mb-1 font-medium ${task.completed ? 'line-through text-on-surface-variant' : 'text-on-surface'}`}>
+            {task.title}
+          </div>
         )}
-        <div className="flex items-center gap-2 flex-wrap">
+
+        <div className="flex items-center gap-2 flex-wrap mt-1">
           {expanded ? (
             <select 
               value={localTask.priority}
               onChange={(e) => setLocalTask(prev => ({ ...prev, priority: e.target.value as Priority }))}
               onClick={(e) => e.stopPropagation()}
-              className={`font-mono text-[10px] px-1.5 py-[1px] rounded font-medium border-none outline-none cursor-pointer ${priorityColors[localTask.priority]}`}
+              className={`text-[10px] px-2 py-0.5 rounded-full font-bold border-none outline-none cursor-pointer transition-colors ${priorityColors[localTask.priority]}`}
             >
-              <option value="p1">P1</option>
-              <option value="p2">P2</option>
-              <option value="p3">P3</option>
-              <option value="p4">P4</option>
+              <option value="p1">P1 Critical</option>
+              <option value="p2">P2 High</option>
+              <option value="p3">P3 Medium</option>
+              <option value="p4">P4 Low</option>
             </select>
           ) : (
-            <span className={`font-mono text-[10px] px-1.5 py-[1px] rounded font-medium ${priorityColors[task.priority]}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${priorityColors[task.priority]}`}>
               {task.priority.toUpperCase()}
             </span>
           )}
@@ -316,7 +314,7 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
               value={localTask.project || ''}
               onChange={(e) => setLocalTask(prev => ({ ...prev, project: e.target.value || undefined }))}
               onClick={(e) => e.stopPropagation()}
-              className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none cursor-pointer max-w-[100px]"
+              className="text-[10px] px-2 py-0.5 rounded-full border border-outline-variant text-on-surface-variant bg-surface-variant/30 outline-none cursor-pointer max-w-[120px]"
             >
               <option value="">No Project</option>
               {folders.map(f => (
@@ -329,178 +327,130 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
             </select>
           ) : (
             task.project && (
-              <span className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint">
+              <span className="text-[10px] px-2 py-0.5 rounded-full border border-outline-variant/30 text-on-surface-variant bg-surface-variant/20">
                 {task.project}
               </span>
             )
           )}
 
           {expanded ? (
-            <select
-              value={localTask.goalId || ''}
-              onChange={(e) => setLocalTask(prev => ({ ...prev, goalId: e.target.value || undefined }))}
-              onClick={(e) => e.stopPropagation()}
-              className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none cursor-pointer max-w-[100px]"
-            >
-              <option value="">No Goal</option>
-              {goals.map(g => (
-                <option key={g.id} value={g.id}>{g.name}</option>
-              ))}
-            </select>
-          ) : (
-            task.goalId && (
-              <span className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: goals.find(g => g.id === task.goalId)?.color || '#7c6af7' }}></span>
-                {goals.find(g => g.id === task.goalId)?.name || 'Goal'}
-              </span>
-            )
-          )}
-
-          {expanded ? (
             <div className="flex items-center gap-1.5">
-              <input 
-                type="date"
-                value={localTask.dueDate || ''}
-                onChange={(e) => setLocalTask(prev => {
-                  const newDate = e.target.value;
-                  const newTime = newDate ? prev.dueTime : undefined;
-                  return { ...prev, dueDate: newDate, dueTime: newTime };
-                })}
-                onClick={(e) => e.stopPropagation()}
-                className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none hover:border-text-faint transition-colors cursor-pointer"
-              />
+              <div className="relative flex items-center">
+                <span className="material-symbols-outlined absolute left-2 text-[14px] text-on-surface-variant pointer-events-none">calendar_today</span>
+                <input 
+                  type="date"
+                  value={localTask.dueDate || ''}
+                  onChange={(e) => setLocalTask(prev => {
+                    const newDate = e.target.value;
+                    const newTime = newDate ? prev.dueTime : undefined;
+                    return { ...prev, dueDate: newDate, dueTime: newTime };
+                  })}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-[10px] pl-7 pr-2 py-0.5 rounded-full border border-outline-variant text-on-surface-variant bg-surface-variant/30 outline-none hover:border-primary transition-colors cursor-pointer"
+                />
+              </div>
               {localTask.dueDate && (
                 <div className="relative flex items-center">
+                  <span className="material-symbols-outlined absolute left-2 text-[14px] text-on-surface-variant pointer-events-none">schedule</span>
                   <select 
                     value={localTask.dueTime || ''}
                     onChange={(e) => setLocalTask(prev => ({ ...prev, dueTime: e.target.value }))}
                     onClick={(e) => e.stopPropagation()}
-                    className="font-mono text-[10px] pl-1.5 pr-4 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none appearance-none cursor-pointer hover:border-text-faint transition-colors"
+                    className="text-[10px] pl-7 pr-6 py-0.5 rounded-full border border-outline-variant text-on-surface-variant bg-surface-variant/30 outline-none appearance-none cursor-pointer hover:border-primary transition-colors"
                   >
-                    <option value="" className="bg-bg2">Time</option>
+                    <option value="" className="bg-surface-container-high">Time</option>
                     {Array.from({ length: 24 * 4 }).map((_, i) => {
                       const hour = Math.floor(i / 4).toString().padStart(2, '0');
                       const minute = ((i % 4) * 15).toString().padStart(2, '0');
                       const time = `${hour}:${minute}`;
-                      return <option key={time} value={time} className="bg-bg2">{time}</option>;
+                      return <option key={time} value={time} className="bg-surface-container-high">{time}</option>;
                     })}
-                    {localTask.dueTime && !Array.from({ length: 24 * 4 }).some((_, i) => {
-                      const hour = Math.floor(i / 4).toString().padStart(2, '0');
-                      const minute = ((i % 4) * 15).toString().padStart(2, '0');
-                      return `${hour}:${minute}` === localTask.dueTime;
-                    }) && (
-                      <option value={localTask.dueTime} className="bg-bg2">{localTask.dueTime}</option>
-                    )}
                   </select>
-                  <svg className="w-2.5 h-2.5 absolute right-1 pointer-events-none text-text-faint" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
               )}
             </div>
           ) : (
             task.dueDate && (
-              <span className={`font-mono text-[10px] flex items-center gap-1 ${task.dueDate < getLocalDateString() ? 'text-red' : 'text-text-muted'}`}>
-                ⏰ {task.dueDate} {task.dueTime || ''}
+              <span className={`text-[10px] flex items-center gap-1 font-bold ${isOverdue ? 'text-error' : 'text-on-surface-variant'}`}>
+                <span className="material-symbols-outlined text-[14px]">{isOverdue ? 'event_busy' : 'event'}</span>
+                {task.dueDate} {task.dueTime || ''}
               </span>
             )
           )}
 
-          {expanded ? (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {localTask.tags.map((tag, index) => (
-                <span key={`${tag}-${index}`} className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint flex items-center gap-1 bg-bg3">
-                  {tag}
-                  <button 
+          <div className="flex items-center gap-1 flex-wrap">
+            {expanded ? (
+              <>
+                {localTask.tags.map((tag, index) => (
+                  <span key={`${tag}-${index}`} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
+                    #{tag}
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLocalTask(prev => ({ ...prev, tags: prev.tags.filter(tg => tg !== tag) }));
+                      }}
+                      className="material-symbols-outlined text-[12px] hover:text-error transition-colors"
+                    >
+                      close
+                    </button>
+                  </span>
+                ))}
+                
+                {isAddingTag ? (
+                  <input
+                    type="text"
+                    autoFocus
+                    className="text-[10px] px-2 py-0.5 rounded-full border border-primary text-on-surface bg-transparent outline-none min-w-[80px]"
+                    placeholder="Tag name..."
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const val = e.currentTarget.value.trim();
+                        if (val) handleAddTag(val);
+                        setIsAddingTag(false);
+                      }
+                      if (e.key === 'Escape') setIsAddingTag(false);
+                    }}
+                    onBlur={(e) => {
+                      const val = e.target.value.trim();
+                      if (val) handleAddTag(val);
+                      setIsAddingTag(false);
+                    }}
+                    onClick={e => e.stopPropagation()}
+                  />
+                ) : (
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setLocalTask(prev => ({ ...prev, tags: prev.tags.filter(tg => tg !== tag) }));
-                    }}
-                    className="hover:text-red-500"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-              
-              {isAddingTag ? (
-                <input
-                  type="text"
-                  autoFocus
-                  className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none min-w-[60px]"
-                  placeholder="New tag..."
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      const val = e.currentTarget.value.trim();
-                      if (val) {
-                        handleAddTag(val);
-                      }
-                      setIsAddingTag(false);
-                    }
-                    if (e.key === 'Escape') setIsAddingTag(false);
-                  }}
-                  onBlur={(e) => {
-                    const val = e.target.value.trim();
-                    if (val) {
-                      handleAddTag(val);
-                    }
-                    setIsAddingTag(false);
-                  }}
-                  onClick={e => e.stopPropagation()}
-                />
-              ) : (
-                <select
-                  className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none cursor-pointer max-w-[100px]"
-                  value=""
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === '__new__') {
                       setIsAddingTag(true);
-                    } else if (val) {
-                      handleAddTag(val);
-                    }
-                  }}
-                  onClick={e => e.stopPropagation()}
-                >
-                  <option value="">+ Tag</option>
-                  {tags.filter(t => !localTask.tags.includes(t.name)).map(tag => (
-                    <option key={tag.id} value={tag.name}>{tag.name}</option>
-                  ))}
-                  <option value="__new__">+ New Tag...</option>
-                </select>
-              )}
-            </div>
-          ) : (
-            task.tags.map((tag, index) => (
-              <span key={`${tag}-${index}`} className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint">
-                {tag}
-              </span>
-            ))
-          )}
+                    }}
+                    className="text-[10px] px-2 py-0.5 rounded-full border border-outline-variant border-dashed text-on-surface-variant hover:border-primary hover:text-primary transition-all"
+                  >
+                    + Tag
+                  </button>
+                )}
+              </>
+            ) : (
+              task.tags.map((tag, index) => (
+                <span key={`${tag}-${index}`} className="text-[10px] text-on-surface-variant/60">
+                  #{tag}
+                </span>
+              ))
+            )}
+          </div>
         </div>
         
         {expanded && (
-          <div className="pt-2 pb-1 pl-1" onClick={e => e.stopPropagation()}>
+          <div className="mt-4 space-y-1" onClick={e => e.stopPropagation()}>
+            <div className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest mb-2 ml-1">Subtasks</div>
             {localTask.subtasks?.map(sub => (
               <div 
                 key={sub.id} 
-                className="flex items-center gap-2.5 p-1.5 px-2 rounded-md text-[13px] text-text-muted hover:bg-bg3 transition-colors"
+                className="flex items-center gap-3 p-2 rounded-xl hover:bg-surface-variant/20 transition-all group/subtask"
                 onClick={(e) => toggleSubtask(e, sub.id)}
               >
-                <motion.div 
-                  className={`w-[13px] h-[13px] rounded-[3px] border-[1.5px] shrink-0 flex items-center justify-center transition-colors cursor-pointer ${sub.completed ? 'bg-green border-green' : 'border-text-faint hover:border-accent'}`}
-                  whileTap={{ scale: 0.8 }}
-                  animate={sub.completed ? { scale: [1, 1.2, 1] } : { scale: 1 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {sub.completed && (
-                    <motion.span 
-                      initial={{ opacity: 0, scale: 0 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="text-[8px] text-white leading-none"
-                    >
-                      ✓
-                    </motion.span>
-                  )}
-                </motion.div>
+                <div className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-all ${sub.completed ? 'bg-primary border-primary' : 'border-outline group-hover/subtask:border-primary'}`}>
+                  {sub.completed && <span className="material-symbols-outlined text-[12px] text-on-primary font-bold">check</span>}
+                </div>
                 <input
                   type="text"
                   value={sub.title}
@@ -512,8 +462,8 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
                     }));
                   }}
                   onClick={(e) => e.stopPropagation()}
-                  className={`flex-1 bg-transparent border-none outline-none ${sub.completed ? 'line-through text-text-faint' : 'text-text-main'}`}
-                  placeholder="Subtask title"
+                  className={`flex-1 bg-transparent border-none outline-none text-xs ${sub.completed ? 'line-through text-on-surface-variant' : 'text-on-surface'}`}
+                  placeholder="New subtask..."
                   autoFocus={sub.title === ''}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -533,14 +483,14 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
                       subtasks: prev.subtasks?.filter(s => s.id !== sub.id) || []
                     }));
                   }}
-                  className="text-text-faint hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                  className="material-symbols-outlined text-[16px] text-on-surface-variant opacity-0 group-hover/subtask:opacity-100 hover:text-error transition-all"
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  delete
                 </button>
               </div>
             ))}
-            <div 
-              className="flex items-center gap-1.5 p-1.5 px-2 rounded-md text-xs text-text-faint cursor-pointer hover:text-text-muted hover:bg-bg3 transition-colors mt-1"
+            <button 
+              className="flex items-center gap-2 p-2 px-3 rounded-xl text-[11px] text-primary font-bold hover:bg-primary/10 transition-all mt-1"
               onClick={(e) => {
                 e.stopPropagation();
                 setLocalTask(prev => ({
@@ -549,26 +499,23 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
                 }));
               }}
             >
-              <span>+</span> Add subtask
-            </div>
+              <span className="material-symbols-outlined text-[16px]">add</span>
+              Add subtask
+            </button>
           </div>
         )}
       </div>
-      {task.subtasks && task.subtasks.length > 0 && (
-        <div className="flex items-center gap-2 shrink-0 mt-0.5">
-          <span className="text-[11px] text-text-faint">{task.subtasks.length} sub</span>
-        </div>
-      )}
-      <div className={`flex items-center gap-2 shrink-0 mt-0.5 transition-opacity ${expanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+
+      <div className={`flex items-center gap-1 shrink-0 mt-0.5 transition-all ${expanded ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
         <button 
           onClick={(e) => {
             e.stopPropagation();
             duplicateTask(task.id);
           }}
-          className="text-text-faint hover:text-text-main p-1 rounded hover:bg-bg3 transition-colors"
-          title="Duplicate task"
+          className="p-1.5 text-on-surface-variant hover:text-primary rounded-xl hover:bg-primary/10 transition-all"
+          title="Duplicate"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          <span className="material-symbols-outlined text-[18px]">content_copy</span>
         </button>
         <button 
           onClick={(e) => {
@@ -577,10 +524,10 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
             if (expanded) setEditingTaskId(null);
             setTasks(prev => prev.map(t => t.id === task.id ? { ...t, deleted: true } : t));
           }}
-          className="text-text-faint hover:text-red-500 p-1 rounded hover:bg-red-500/10 transition-colors"
-          title="Delete task"
+          className="p-1.5 text-on-surface-variant hover:text-error rounded-xl hover:bg-error/10 transition-all"
+          title="Delete"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+          <span className="material-symbols-outlined text-[18px]">delete</span>
         </button>
       </div>
     </div>
