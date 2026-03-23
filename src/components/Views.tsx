@@ -1451,10 +1451,11 @@ export const TagsView = () => {
 };
 
 export const TrashView = () => {
-  const { tasks, setTasks, folders, setFolders } = useAppContext();
+  const { tasks, setTasks, folders, setFolders, notes, setNotes } = useAppContext();
   
   const deletedTasks = tasks.filter(t => t.deleted);
   const deletedFolders = folders.filter(f => f.deleted);
+  const deletedNotes = notes.filter(n => n.deleted);
 
   const restoreTask = (id: string) => {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, deleted: false } : t));
@@ -1472,16 +1473,25 @@ export const TrashView = () => {
     setFolders(prev => prev.filter(f => f.id !== id));
   };
 
+  const restoreNote = (id: string) => {
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, deleted: false } : n));
+  };
+
+  const permanentDeleteNote = (id: string) => {
+    setNotes(prev => prev.filter(n => n.id !== id));
+  };
+
   const emptyTrash = () => {
     setTasks(prev => prev.filter(t => !t.deleted));
     setFolders(prev => prev.filter(f => !f.deleted));
+    setNotes(prev => prev.filter(n => !n.deleted));
   };
 
   return (
     <div className="flex-1 overflow-y-auto p-3 px-3.5 md:p-5 md:px-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-lg font-medium text-text-main">Trash</h2>
-        {(deletedTasks.length > 0 || deletedFolders.length > 0) && (
+        {(deletedTasks.length > 0 || deletedFolders.length > 0 || deletedNotes.length > 0) && (
           <button 
             onClick={emptyTrash}
             className="text-xs px-3 py-1.5 rounded-md bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
@@ -1512,7 +1522,7 @@ export const TrashView = () => {
       )}
 
       {deletedTasks.length > 0 && (
-        <div>
+        <div className="mb-8">
           <h3 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wider">Deleted Tasks</h3>
           <div className="flex flex-col gap-1">
             {deletedTasks.map(t => (
@@ -1531,7 +1541,27 @@ export const TrashView = () => {
         </div>
       )}
 
-      {deletedTasks.length === 0 && deletedFolders.length === 0 && (
+      {deletedNotes.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wider">Deleted Notes</h3>
+          <div className="flex flex-col gap-1">
+            {deletedNotes.map(n => (
+              <div key={n.id} className="flex items-center justify-between p-2 rounded-lg border border-border-subtle bg-bg2 group">
+                <div className="flex items-center gap-3">
+                  <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: n.color }}></div>
+                  <span className="text-[13.5px] text-text-main opacity-70">{n.title || 'Untitled Note'}</span>
+                </div>
+                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => restoreNote(n.id)} className="text-xs text-text-muted hover:text-text-main px-2 py-1 rounded hover:bg-bg3">Restore</button>
+                  <button onClick={() => permanentDeleteNote(n.id)} className="text-xs text-red-500 hover:text-red-400 px-2 py-1 rounded hover:bg-red-500/10">Delete Forever</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {deletedTasks.length === 0 && deletedFolders.length === 0 && deletedNotes.length === 0 && (
         <div className="text-center text-text-faint text-sm mt-10">Trash is empty.</div>
       )}
     </div>

@@ -91,6 +91,23 @@
         "userId": { "type": "string" }
       },
       "required": ["q1", "q2", "q3", "q4", "userId"]
+    },
+    "Note": {
+      "title": "Note",
+      "description": "A note created by a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "color": { "type": "string" },
+        "pinned": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "userId": { "type": "string" },
+        "deleted": { "type": "boolean" }
+      },
+      "required": ["id", "color", "pinned", "createdAt", "updatedAt", "userId"]
     }
   },
   "firestore": {
@@ -113,6 +130,10 @@
     "/archives/{archiveId}": {
       "schema": "Archive",
       "description": "Archives created by users"
+    },
+    "/notes/{noteId}": {
+      "schema": "Note",
+      "description": "Notes created by users"
     },
     "/matrixConfigs/{configId}": {
       "schema": "MatrixConfig",

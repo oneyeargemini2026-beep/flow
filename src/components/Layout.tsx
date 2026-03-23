@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../store';
 import { ViewType } from '../types';
 import { HexColorPicker } from 'react-colorful';
-import { Sun, Calendar, Inbox, Target, LayoutGrid, CalendarDays, Archive, Tag, LayoutDashboard, History, Trash2, Brain } from 'lucide-react';
+import { Sun, Calendar, Inbox, Target, LayoutGrid, CalendarDays, Archive, Tag, LayoutDashboard, History, Trash2, Brain, StickyNote } from 'lucide-react';
 
 export const Sidebar = () => {
   const { currentView, setCurrentView, folders, setFolders, setIsFocusOpen, setIsAddTaskOpen, activeProject, setActiveProject, isSidebarOpen, setIsSidebarOpen, tasks, setTasks, moveProject, renameProject, tags, setTags, activeFolder, setActiveFolder, signOutUser } = useAppContext();
@@ -144,6 +144,7 @@ export const Sidebar = () => {
     { id: 'goals', icon: <Target size={16} />, label: 'Goals' },
     { id: 'matrix', icon: <LayoutGrid size={16} />, label: 'Matrix' },
     { id: 'calendar', icon: <CalendarDays size={16} />, label: 'Calendar' },
+    { id: 'notes', icon: <StickyNote size={16} />, label: 'Notes' },
     { id: 'archive', icon: <Archive size={16} />, label: 'Archive' },
     { id: 'tags', icon: <Tag size={16} />, label: 'Tags' },
   ];

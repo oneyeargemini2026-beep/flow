@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { Task, Folder, Archive, ViewType, MatrixConfig, Tag, Goal } from './types';
+import { Task, Folder, Archive, ViewType, MatrixConfig, Tag, Goal, Note } from './types';
 import { getLocalDateString, sanitizeData } from './utils';
 import { auth, db } from '@/src/lib/firebase';
 import { signInWithGoogle } from '@/src/lib/auth';
@@ -156,7 +156,7 @@ function useSyncedCollection<T extends { id: string }>(
       });
       modified.forEach(item => {
         const docRef = doc(db, collectionName, item.id);
-        batch.update(docRef, sanitizeData({ ...item, userId }));
+        batch.set(docRef, sanitizeData({ ...item, userId }), { merge: true });
       });
       removed.forEach(item => {
         const docRef = doc(db, collectionName, item.id);
@@ -208,7 +208,7 @@ function useSyncedDocument<T>(
       
       if (JSON.stringify(prev) !== JSON.stringify(newItem)) {
         const docRef = doc(db, collectionName, docId);
-        updateDoc(docRef, sanitizeData({ ...newItem, userId })).catch(err => handleFirestoreError(err, OperationType.UPDATE, `${collectionName}/${docId}`));
+        setDoc(docRef, sanitizeData({ ...newItem, userId }), { merge: true }).catch(err => handleFirestoreError(err, OperationType.UPDATE, `${collectionName}/${docId}`));
       }
       return newItem;
     });
@@ -238,6 +238,8 @@ interface AppContextType {
   setTags: React.Dispatch<React.SetStateAction<Tag[]>>;
   goals: Goal[];
   setGoals: React.Dispatch<React.SetStateAction<Goal[]>>;
+  notes: Note[];
+  setNotes: React.Dispatch<React.SetStateAction<Note[]>>;
   matrixConfig: MatrixConfig;
   setMatrixConfig: React.Dispatch<React.SetStateAction<MatrixConfig>>;
   isFocusOpen: boolean;
@@ -296,6 +298,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   const [folders, setFolders] = useSyncedCollection<Folder>('folders', user?.uid, initialFolders);
   const [tags, setTags] = useSyncedCollection<Tag>('tags', user?.uid, initialTags);
   const [goals, setGoals] = useSyncedCollection<Goal>('goals', user?.uid, initialGoals);
+  const [notes, setNotes] = useSyncedCollection<Note>('notes', user?.uid, []);
   const [archives, setArchives] = useSyncedCollection<Archive>('archives', user?.uid, initialArchives);
   const [matrixConfig, setMatrixConfig] = useSyncedDocument<MatrixConfig>('matrixConfigs', user?.uid || 'default', user?.uid, initialMatrixConfig);
 
@@ -453,6 +456,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
       archives, setArchives,
       tags, setTags,
       goals, setGoals,
+      notes, setNotes,
       matrixConfig, setMatrixConfig,
       isFocusOpen, setIsFocusOpen,
       isAddTaskOpen, setIsAddTaskOpen,

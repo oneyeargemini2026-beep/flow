@@ -1,4 +1,4 @@
-export type ViewType = 'today' | 'upcoming' | 'inbox' | 'dashboard' | 'matrix' | 'calendar' | 'archive' | 'trash' | 'history' | 'tags' | 'folder' | 'project' | 'goals';
+export type ViewType = 'today' | 'upcoming' | 'inbox' | 'dashboard' | 'matrix' | 'calendar' | 'notes' | 'archive' | 'trash' | 'history' | 'tags' | 'folder' | 'project' | 'goals';
 export type Priority = 'p1' | 'p2' | 'p3' | 'p4';
 
 export interface Goal {
@@ -70,4 +70,16 @@ export interface MatrixConfig {
   q2: MatrixQuadrant;
   q3: MatrixQuadrant;
   q4: MatrixQuadrant;
+}
+
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  color: string;
+  pinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+  userId?: string;
+  deleted?: boolean;
 }

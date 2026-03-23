@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { AppProvider, useAppContext } from './store';
 import { Topbar, Sidebar } from './components/Layout';
 import { TodayView, InboxView, UpcomingView, DashboardView, MatrixView, CalendarView, ArchiveView, TrashView, HistoryView, TagsView, FolderView, ProjectView, GoalsView } from './components/Views';
+import { NotesView } from './components/NotesView';
 import { AddTaskModal, ProcessInboxModal, FocusOverlay } from './components/Modals';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -137,6 +138,7 @@ const MainContent = () => {
         {currentView === 'dashboard' && <DashboardView />}
         {currentView === 'matrix' && <MatrixView />}
         {currentView === 'calendar' && <CalendarView />}
+        {currentView === 'notes' && <NotesView />}
         {currentView === 'archive' && <ArchiveView />}
         {currentView === 'tags' && <TagsView />}
         {currentView === 'goals' && <GoalsView />}

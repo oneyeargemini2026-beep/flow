@@ -98,6 +98,14 @@ service cloud.firestore {
       allow delete: if isDocOwner();
     }
 
+    // Notes Collection
+    match /notes/{noteId} {
+      allow read: if isDocOwner();
+      allow create: if isDocOwner() && isValidDocument(request.resource.data);
+      allow update: if isDocOwner() && isValidDocument(request.resource.data) && uidNotModified();
+      allow delete: if isDocOwner();
+    }
+
     // MatrixConfigs Collection
     match /matrixConfigs/{configId} {
       allow read: if isAuthenticated() && (request.auth.uid == configId || (resource != null && request.auth.uid == resource.data.userId));
