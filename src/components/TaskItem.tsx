@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Calendar, MoreVertical, Copy, Trash2, CheckCircle2, Circle, Clock, Tag, Target, ChevronRight, ChevronDown, Edit2, GripVertical } from 'lucide-react';
 import { Task, Priority } from '../types';
 import { useAppContext } from '../store';
 import { getLocalISOString, getLocalDateString } from '../utils';
@@ -312,44 +313,56 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
           )}
 
           {expanded ? (
-            <select
-              value={localTask.project || ''}
-              onChange={(e) => {
-                console.log('Project changed:', e.target.value);
-                setLocalTask(prev => ({ ...prev, project: e.target.value || undefined }));
-              }}
-              onClick={(e) => e.stopPropagation()}
-              className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none cursor-pointer max-w-[100px]"
-            >
-              <option value="">No Project</option>
-              {folders.map(f => (
-                <optgroup key={f.id} label={f.name}>
-                  {f.projects.map((p, index) => (
-                    <option key={`${f.id}-${p}-${index}`} value={p}>{p}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+            <div className="relative flex items-center">
+              <select
+                value={localTask.project || ''}
+                onChange={(e) => {
+                  const val = e.target.value || undefined;
+                  setLocalTask(prev => ({ ...prev, project: val }));
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="font-mono text-[10px] px-2 py-1 rounded border border-border-strong text-text-main bg-bg3 outline-none cursor-pointer max-w-[120px] appearance-none hover:border-accent transition-colors"
+              >
+                <option value="">No Project</option>
+                {folders.map(f => (
+                  <React.Fragment key={f.id}>
+                    <option value={f.name}>{f.name} (Folder)</option>
+                    {f.projects.map((p, index) => (
+                      <option key={`${f.id}-${p}-${index}`} value={p}>&nbsp;&nbsp;&nbsp;{p}</option>
+                    ))}
+                  </React.Fragment>
+                ))}
+              </select>
+              <div className="absolute right-1.5 pointer-events-none text-text-faint">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+            </div>
           ) : (
             task.project && (
-              <span className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint">
+              <span className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint flex items-center gap-1">
+                <span className="w-1 h-1 rounded-full bg-accent"></span>
                 {task.project}
               </span>
             )
           )}
 
           {expanded ? (
-            <select
-              value={localTask.goalId || ''}
-              onChange={(e) => setLocalTask(prev => ({ ...prev, goalId: e.target.value || undefined }))}
-              onClick={(e) => e.stopPropagation()}
-              className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none cursor-pointer max-w-[100px]"
-            >
-              <option value="">No Goal</option>
-              {goals.map(g => (
-                <option key={g.id} value={g.id}>{g.name}</option>
-              ))}
-            </select>
+            <div className="relative flex items-center">
+              <select
+                value={localTask.goalId || ''}
+                onChange={(e) => setLocalTask(prev => ({ ...prev, goalId: e.target.value || undefined }))}
+                onClick={(e) => e.stopPropagation()}
+                className="font-mono text-[10px] px-2 py-1 rounded border border-border-strong text-text-main bg-bg3 outline-none cursor-pointer max-w-[120px] appearance-none hover:border-accent transition-colors"
+              >
+                <option value="">No Goal</option>
+                {goals.map(g => (
+                  <option key={g.id} value={g.id} className="bg-bg text-text-main">{g.name}</option>
+                ))}
+              </select>
+              <div className="absolute right-1.5 pointer-events-none text-text-faint">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+            </div>
           ) : (
             task.goalId && (
               <span className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint flex items-center gap-1">
@@ -361,48 +374,55 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
 
           {expanded ? (
             <div className="flex items-center gap-1.5">
-              <input 
-                type="date"
-                value={localTask.dueDate || ''}
-                onChange={(e) => setLocalTask(prev => {
-                  const newDate = e.target.value;
-                  const newTime = newDate ? prev.dueTime : undefined;
-                  return { ...prev, dueDate: newDate, dueTime: newTime };
-                })}
-                onClick={(e) => e.stopPropagation()}
-                className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none hover:border-text-faint transition-colors cursor-pointer"
-              />
+              <div className="relative flex items-center group/date">
+                <Calendar size={12} className="absolute left-2 text-text-faint group-hover/date:text-accent transition-colors pointer-events-none" />
+                <input 
+                  type="date"
+                  value={localTask.dueDate || ''}
+                  onChange={(e) => setLocalTask(prev => {
+                    const newDate = e.target.value;
+                    const newTime = newDate ? prev.dueTime : undefined;
+                    return { ...prev, dueDate: newDate, dueTime: newTime };
+                  })}
+                  onClick={(e) => e.stopPropagation()}
+                  className="font-mono text-[10px] pl-6 pr-2 py-1 rounded border border-border-strong text-text-main bg-bg3 outline-none hover:border-accent transition-colors cursor-pointer appearance-none min-w-[110px]"
+                />
+              </div>
               {localTask.dueDate && (
-                <div className="relative flex items-center">
+                <div className="relative flex items-center group/time">
                   <select 
                     value={localTask.dueTime || ''}
                     onChange={(e) => setLocalTask(prev => ({ ...prev, dueTime: e.target.value }))}
                     onClick={(e) => e.stopPropagation()}
-                    className="font-mono text-[10px] pl-1.5 pr-4 py-[1px] rounded border border-border-strong text-text-faint bg-transparent outline-none appearance-none cursor-pointer hover:border-text-faint transition-colors"
+                    className="font-mono text-[10px] px-2 py-1 rounded border border-border-strong text-text-main bg-bg3 outline-none hover:border-accent transition-colors cursor-pointer appearance-none pr-5"
                   >
-                    <option value="" className="bg-bg2">Time</option>
+                    <option value="" className="bg-bg2 text-text-faint">Time</option>
                     {Array.from({ length: 24 * 4 }).map((_, i) => {
                       const hour = Math.floor(i / 4).toString().padStart(2, '0');
                       const minute = ((i % 4) * 15).toString().padStart(2, '0');
                       const time = `${hour}:${minute}`;
-                      return <option key={time} value={time} className="bg-bg2">{time}</option>;
+                      return <option key={time} value={time} className="bg-bg text-text-main">{time}</option>;
                     })}
                     {localTask.dueTime && !Array.from({ length: 24 * 4 }).some((_, i) => {
                       const hour = Math.floor(i / 4).toString().padStart(2, '0');
                       const minute = ((i % 4) * 15).toString().padStart(2, '0');
                       return `${hour}:${minute}` === localTask.dueTime;
                     }) && (
-                      <option value={localTask.dueTime} className="bg-bg2">{localTask.dueTime}</option>
+                      <option value={localTask.dueTime} className="bg-bg text-text-main">{localTask.dueTime}</option>
                     )}
                   </select>
-                  <svg className="w-2.5 h-2.5 absolute right-1 pointer-events-none text-text-faint" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                  <div className="absolute right-1.5 pointer-events-none text-text-faint">
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
                 </div>
               )}
             </div>
           ) : (
             task.dueDate && (
-              <span className={`font-mono text-[10px] flex items-center gap-1 ${task.dueDate < getLocalDateString() ? 'text-red' : 'text-text-muted'}`}>
-                ⏰ {task.dueDate} {task.dueTime || ''}
+              <span className={`font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong flex items-center gap-1 ${task.dueDate < getLocalDateString() && !task.completed ? 'text-red-500 border-red-500/30 bg-red-500/5' : 'text-text-faint'}`}>
+                <Calendar size={10} />
+                {task.dueDate === getLocalDateString() ? 'Today' : task.dueDate}
+                {task.dueTime && ` at ${task.dueTime}`}
               </span>
             )
           )}

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { motion, useDragControls, useAnimation } from 'motion/react';
 import { ChevronLeft, ChevronRight, Brain, Flame } from 'lucide-react';
 import { useAppContext } from '../store';
 import { TaskItem } from './TaskItem';
@@ -708,11 +709,12 @@ export const DashboardView = () => {
 };
 
 export const MatrixView = () => {
-  const { tasks, matrixConfig, setMatrixConfig } = useAppContext();
+  const { tasks, setTasks, matrixConfig, setMatrixConfig } = useAppContext();
   const [editingQuadrant, setEditingQuadrant] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<'title' | 'subtitle' | null>(null);
   const [editValue, setEditValue] = useState('');
   const [colorPickerOpen, setColorPickerOpen] = useState<string | null>(null);
+  const [hoveredQuadrant, setHoveredQuadrant] = useState<string | null>(null);
 
   const quadrants = [
     { id: 'q1', priority: 'p1', ...matrixConfig.q1 },
@@ -744,7 +746,14 @@ export const MatrixView = () => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 grid-rows-4 md:grid-rows-2 gap-[1px] flex-1 overflow-y-auto md:overflow-hidden bg-border-subtle">
         {quadrants.map(q => (
-          <div key={q.id} className="bg-bg p-5 overflow-y-auto flex flex-col gap-2 relative">
+          <div 
+            key={q.id} 
+            data-quadrant-id={q.id}
+            data-priority={q.priority}
+            className={`bg-bg p-5 overflow-y-auto flex flex-col gap-2 relative quadrant-container transition-colors duration-200 ${
+              hoveredQuadrant === q.id ? 'bg-accent/5 ring-2 ring-inset ring-accent/30' : ''
+            }`}
+          >
             <div className="mb-2 flex items-start justify-between">
               <div className="flex-1">
                 <div className="relative inline-block">
@@ -812,10 +821,67 @@ export const MatrixView = () => {
               </div>
             </div>
             {tasks.filter(t => !t.completed && !t.deleted && t.priority === q.priority).sort((a, b) => a.title.localeCompare(b.title)).map(t => (
-              <TaskItem key={t.id} task={t} />
+              <motion.div
+                key={t.id}
+                layout
+                drag
+                dragSnapToOrigin
+                whileHover={{ scale: 1.02 }}
+                whileDrag={{ 
+                  scale: 1.05, 
+                  zIndex: 1000, 
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+                  cursor: 'grabbing',
+                  pointerEvents: 'none'
+                }}
+                onDrag={(e, info) => {
+                  const x = info.point.x;
+                  const y = info.point.y;
+                  const quadrantElements = document.querySelectorAll('.quadrant-container');
+                  let hovered = null;
+                  
+                  quadrantElements.forEach(q => {
+                    const rect = q.getBoundingClientRect();
+                    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                      hovered = q.getAttribute('data-quadrant-id');
+                    }
+                  });
+                  
+                  setHoveredQuadrant(hovered);
+                }}
+                onDragEnd={(e: any, info) => {
+                  setHoveredQuadrant(null);
+                  
+                  const x = info.point.x;
+                  const y = info.point.y;
+                  const quadrantElements = document.querySelectorAll('.quadrant-container');
+                  let targetQuadrant: Element | null = null;
+                  
+                  quadrantElements.forEach(q => {
+                    const rect = q.getBoundingClientRect();
+                    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                      targetQuadrant = q;
+                    }
+                  });
+                  
+                  if (targetQuadrant) {
+                    const newPriority = targetQuadrant.getAttribute('data-priority');
+                    if (newPriority && newPriority !== t.priority) {
+                      setTasks(prev => prev.map(task => 
+                        task.id === t.id ? { ...task, priority: newPriority as any } : task
+                      ));
+                    }
+                  }
+                }}
+                className="cursor-grab active:cursor-grabbing touch-none select-none"
+              >
+                <TaskItem task={t} />
+              </motion.div>
             ))}
             {tasks.filter(t => !t.completed && !t.deleted && t.priority === q.priority).length === 0 && (
-              <div className="text-text-faint text-xs italic opacity-50">No tasks</div>
+              <div className="text-center py-10 border-2 border-dashed border-border-subtle rounded-xl text-text-faint text-xs italic opacity-40 pointer-events-none">
+                Drop tasks here to set {q.title}
+              </div>
             )}
           </div>
         ))}
@@ -1048,7 +1114,7 @@ export const FolderView = () => {
     !t.deleted && 
     !t.isInbox && 
     t.project && 
-    folderProjects.includes(t.project)
+    (folderProjects.includes(t.project) || t.project === activeFolder)
   ).sort((a, b) => a.title.localeCompare(b.title));
 
   const handleRenameFolder = () => {
@@ -1130,9 +1196,24 @@ export const FolderView = () => {
         </span>
       </div>
 
-      {folderProjects.length === 0 ? (
+      {/* General Folder Tasks */}
+      {folderTasks.filter(t => t.project === activeFolder).length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-3 border-b border-border-subtle pb-1">
+            <h3 className="font-mono text-xs uppercase tracking-wider text-text-muted">General</h3>
+            <span className="text-[10px] text-text-faint ml-auto">{folderTasks.filter(t => t.project === activeFolder).length}</span>
+          </div>
+          <div className="flex flex-col">
+            {folderTasks.filter(t => t.project === activeFolder).map(t => (
+              <TaskItem key={t.id} task={t} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {folderProjects.length === 0 && folderTasks.filter(t => t.project === activeFolder).length === 0 ? (
         <div className="text-center py-10 text-text-faint italic">
-          No projects in this folder.
+          No projects or tasks in this folder.
         </div>
       ) : (
         folderProjects.map((project, index) => {
@@ -1485,6 +1566,30 @@ export const CalendarView = () => {
   const [viewMode, setViewMode] = React.useState<'month' | 'week'>('month');
   const [currentDate, setCurrentDate] = React.useState(new Date());
   const [selectedDate, setSelectedDate] = React.useState(new Date());
+  const dragControls = useDragControls();
+  const controls = useAnimation();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerHeight, setContainerHeight] = useState(800);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      setContainerHeight(containerRef.current.offsetHeight);
+    }
+    const handleResize = () => {
+      if (containerRef.current) {
+        setContainerHeight(containerRef.current.offsetHeight);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const collapsedY = viewMode === 'month' ? Math.max(containerHeight - 80, 520) : Math.max(containerHeight - 80, 240);
+
+  useEffect(() => {
+    controls.start(isExpanded ? { y: 0 } : { y: collapsedY });
+  }, [isExpanded, viewMode, collapsedY, controls, containerHeight]);
 
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -1593,9 +1698,9 @@ export const CalendarView = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-bg overflow-hidden h-full" data-purpose="calendar-view">
+    <div ref={containerRef} className="flex-1 flex flex-col bg-bg overflow-hidden h-full relative" data-purpose="calendar-view">
       {/* Header Section */}
-      <header className="px-6 pt-6 pb-4 border-b border-border-subtle shrink-0" data-purpose="calendar-header">
+      <header className="px-6 pt-6 pb-4 border-b border-border-subtle shrink-0 z-10 relative bg-bg" data-purpose="calendar-header">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-text-main">{monthNames[month]} {year}</h1>
@@ -1642,7 +1747,7 @@ export const CalendarView = () => {
       </header>
 
       {/* Calendar Grid Section */}
-      <section className="p-4 shrink-0" data-purpose="monthly-grid">
+      <section className="p-4 shrink-0 z-10 relative bg-bg" data-purpose="monthly-grid">
         {/* Days of Week Labels */}
         <div className="grid grid-cols-7 mb-2">
           {dayNames.map(day => (
@@ -1700,8 +1805,35 @@ export const CalendarView = () => {
       </section>
 
       {/* Daily Tasks List Section */}
-      <section className="flex-1 bg-bg2 rounded-t-[32px] shadow-[0_-4px_20px_rgba(0,0,0,0.2)] px-6 pt-8 pb-10 overflow-y-auto no-scrollbar" data-purpose="selected-day-tasks">
-        <div className="flex items-center justify-between mb-6">
+      <motion.section 
+        drag="y"
+        dragControls={dragControls}
+        dragListener={false}
+        dragConstraints={{ top: 0, bottom: collapsedY }}
+        dragElastic={0.1}
+        animate={controls}
+        onDragEnd={(e, info) => {
+          if (info.velocity.y < -300 || info.offset.y < -100) {
+            setIsExpanded(true);
+          } else if (info.velocity.y > 300 || info.offset.y > 100) {
+            setIsExpanded(false);
+          } else {
+            // Snap back to current state
+            controls.start(isExpanded ? { y: 0 } : { y: collapsedY });
+          }
+        }}
+        style={{ 
+          top: 0,
+          zIndex: 20,
+        }}
+        className={`absolute left-0 right-0 h-full bg-bg2 rounded-t-[32px] shadow-[0_-8px_30px_rgba(0,0,0,0.3)] px-6 pt-4 pb-10 overflow-y-auto no-scrollbar ${isExpanded ? 'pointer-events-auto' : 'pointer-events-none'}`} 
+        data-purpose="selected-day-tasks"
+      >
+        <div 
+          onPointerDown={(e) => dragControls.start(e)}
+          className="w-12 h-1.5 bg-border-strong rounded-full mx-auto mb-6 cursor-grab active:cursor-grabbing shrink-0 pointer-events-auto" 
+        />
+        <div className="flex items-center justify-between mb-6 pointer-events-auto">
           <h2 className="text-lg font-bold text-text-main">
             {fullDayNames[selectedDate.getDay()]}, {selectedDate.getDate()} {monthNames[selectedDate.getMonth()].substring(0, 3)}
           </h2>
@@ -1711,7 +1843,7 @@ export const CalendarView = () => {
         </div>
         
         {/* Task Items */}
-        <div className="space-y-4">
+        <div className="space-y-4 pointer-events-auto">
           {sortedSelectedDayTasks.length === 0 ? (
             <div className="text-center py-8 text-text-muted text-sm">No tasks for this day</div>
           ) : (
@@ -1757,7 +1889,7 @@ export const CalendarView = () => {
             ))
           )}
         </div>
-      </section>
+      </motion.section>
     </div>
   );
 };

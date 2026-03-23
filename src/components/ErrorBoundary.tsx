@@ -1,7 +1,7 @@
-import * as React from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 interface State {
@@ -9,7 +9,7 @@ interface State {
   error: Error | null;
 }
 
-export class ErrorBoundary extends React.Component<Props, State> {
+export class ErrorBoundary extends Component<any, any> {
   public state: State = {
     hasError: false,
     error: null,
@@ -24,11 +24,14 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   public render() {
-    if (this.state.hasError) {
+    const { hasError, error } = (this as any).state;
+    const { children } = (this as any).props;
+
+    if (hasError) {
       let errorMessage = "Something went wrong. Please try refreshing the page.";
       
       try {
-        const errorJson = JSON.parse(this.state.error?.message || "");
+        const errorJson = JSON.parse(error?.message || "");
         if (errorJson.error && errorJson.error.includes("Missing or insufficient permissions")) {
           errorMessage = "You don't have permission to perform this action. Please check your account settings.";
         }
@@ -52,6 +55,6 @@ export class ErrorBoundary extends React.Component<Props, State> {
       );
     }
 
-    return this.props.children;
+    return children;
   }
 }

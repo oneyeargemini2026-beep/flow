@@ -246,6 +246,8 @@ interface AppContextType {
   setIsAddTaskOpen: (v: boolean) => void;
   isProcessInboxOpen: boolean;
   setIsProcessInboxOpen: (v: boolean) => void;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
   moveProject: (projectName: string, fromFolderId: string, toFolderId: string, targetIndex?: number) => void;
   renameProject: (oldName: string, newName: string) => void;
   duplicateTask: (taskId: string) => void;
@@ -362,6 +364,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   const [isFocusOpen, setIsFocusOpen] = useState(false);
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isProcessInboxOpen, setIsProcessInboxOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
   const moveProject = (projectName: string, fromFolderId: string, toFolderId: string, targetIndex?: number) => {
@@ -454,6 +457,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
       isFocusOpen, setIsFocusOpen,
       isAddTaskOpen, setIsAddTaskOpen,
       isProcessInboxOpen, setIsProcessInboxOpen,
+      isSidebarOpen, setIsSidebarOpen,
       moveProject, renameProject,
       duplicateTask,
       editingTaskId, setEditingTaskId
