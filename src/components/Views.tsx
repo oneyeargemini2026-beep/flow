@@ -1286,6 +1286,8 @@ export const TagsView = () => {
   const [newTagColor, setNewTagColor] = useState('#7c6af7');
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
   const [editingTagName, setEditingTagName] = useState('');
+  const [colorPickerTagId, setColorPickerTagId] = useState<string | null>(null);
+  const [showNewTagColorPicker, setShowNewTagColorPicker] = useState(false);
 
   const handleCreateTag = () => {
     if (!newTagName.trim()) return;
@@ -1314,6 +1316,10 @@ export const TagsView = () => {
       tags: t.tags.map(tag => tag === oldTag.name ? newName : tag)
     })));
     setEditingTagId(null);
+  };
+
+  const handleColorChange = (tagId: string, newColor: string) => {
+    setTags(prev => prev.map(t => t.id === tagId ? { ...t, color: newColor } : t));
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetTag: string) => {
@@ -1355,7 +1361,21 @@ export const TagsView = () => {
                 style={{ borderTop: `3px solid ${tag.color}` }}
               >
                 <div className="font-medium text-sm flex items-center gap-2" style={{ color: tag.color }}>
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color }}></span>
+                  <div className="relative">
+                    <button 
+                      className="w-3 h-3 rounded-full cursor-pointer hover:ring-2 ring-offset-1 ring-offset-bg transition-all" 
+                      style={{ backgroundColor: tag.color }}
+                      onClick={(e) => { e.stopPropagation(); setColorPickerTagId(colorPickerTagId === tag.id ? null : tag.id); }}
+                    ></button>
+                    {colorPickerTagId === tag.id && (
+                      <div className="absolute top-full left-0 mt-2 z-50">
+                        <div className="fixed inset-0" onClick={() => setColorPickerTagId(null)}></div>
+                        <div className="relative bg-bg border border-border-strong rounded-lg p-2 shadow-xl" onClick={e => e.stopPropagation()}>
+                          <HexColorPicker color={tag.color} onChange={(c) => handleColorChange(tag.id, c)} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   {editingTagId === tag.id ? (
                     <input
                       autoFocus
@@ -1416,16 +1436,20 @@ export const TagsView = () => {
                 }}
               />
               <div className="flex items-center justify-between">
-                <div className="relative group/color">
+                <div className="relative">
                   <div 
                     className="w-6 h-6 rounded-full border border-border-strong cursor-pointer"
                     style={{ backgroundColor: newTagColor }}
+                    onClick={(e) => { e.stopPropagation(); setShowNewTagColorPicker(!showNewTagColorPicker); }}
                   ></div>
-                  <div className="absolute top-full left-0 mt-2 z-50 hidden group-hover/color:block">
-                    <div className="bg-bg border border-border-strong rounded-lg p-2 shadow-xl">
-                      <HexColorPicker color={newTagColor} onChange={setNewTagColor} />
+                  {showNewTagColorPicker && (
+                    <div className="absolute top-full left-0 mt-2 z-50">
+                      <div className="fixed inset-0" onClick={() => setShowNewTagColorPicker(false)}></div>
+                      <div className="relative bg-bg border border-border-strong rounded-lg p-2 shadow-xl" onClick={e => e.stopPropagation()}>
+                        <HexColorPicker color={newTagColor} onChange={setNewTagColor} />
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <button 
