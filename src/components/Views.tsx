@@ -1858,13 +1858,15 @@ export const CalendarView = () => {
           top: 0,
           zIndex: 20,
         }}
-        className={`absolute left-0 right-0 h-full bg-bg2 rounded-t-[32px] shadow-[0_-8px_30px_rgba(0,0,0,0.3)] px-6 pt-4 pb-10 overflow-y-auto no-scrollbar ${isExpanded ? 'pointer-events-auto' : 'pointer-events-none'}`} 
+        className={`absolute left-0 right-0 h-full bg-bg2 rounded-t-[32px] shadow-[0_-8px_30px_rgba(0,0,0,0.3)] px-6 pt-2 pb-10 overflow-y-auto no-scrollbar ${isExpanded ? 'pointer-events-auto' : 'pointer-events-none'}`} 
         data-purpose="selected-day-tasks"
       >
         <div 
           onPointerDown={(e) => dragControls.start(e)}
-          className="w-12 h-1.5 bg-border-strong rounded-full mx-auto mb-6 cursor-grab active:cursor-grabbing shrink-0 pointer-events-auto" 
-        />
+          className="w-full py-4 mb-2 cursor-grab active:cursor-grabbing shrink-0 pointer-events-auto touch-none flex justify-center items-center" 
+        >
+          <div className="w-12 h-1.5 bg-border-strong rounded-full" />
+        </div>
         <div className="flex items-center justify-between mb-6 pointer-events-auto">
           <h2 className="text-lg font-bold text-text-main">
             {fullDayNames[selectedDate.getDay()]}, {selectedDate.getDate()} {monthNames[selectedDate.getMonth()].substring(0, 3)}
