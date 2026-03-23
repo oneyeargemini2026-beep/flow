@@ -740,17 +740,17 @@ export const MatrixView = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-y-auto">
       <div className="p-3 px-3.5 md:px-6 border-b border-border-subtle flex gap-2 items-center shrink-0">
         <span className="text-xs text-text-faint">Eisenhower Matrix — click titles or subtitles to edit · click color dot to recolor</span>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 grid-rows-4 md:grid-rows-2 gap-[1px] flex-1 overflow-y-auto md:overflow-hidden bg-border-subtle">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-[1px] flex-1 bg-border-subtle">
         {quadrants.map(q => (
           <div 
             key={q.id} 
             data-quadrant-id={q.id}
             data-priority={q.priority}
-            className={`bg-bg p-5 overflow-y-auto flex flex-col gap-2 relative quadrant-container transition-colors duration-200 ${
+            className={`bg-bg p-5 flex flex-col gap-2 relative quadrant-container transition-colors duration-200 min-h-[300px] md:min-h-[40vh] ${
               hoveredQuadrant === q.id ? 'bg-accent/5 ring-2 ring-inset ring-accent/30' : ''
             }`}
           >
@@ -834,15 +834,16 @@ export const MatrixView = () => {
                   cursor: 'grabbing',
                   pointerEvents: 'none'
                 }}
-                onDrag={(e, info) => {
-                  const x = info.point.x;
-                  const y = info.point.y;
+                onDrag={(e: any, info) => {
+                  const clientX = e.clientX ?? e.touches?.[0]?.clientX ?? (info.point.x - window.scrollX);
+                  const clientY = e.clientY ?? e.touches?.[0]?.clientY ?? (info.point.y - window.scrollY);
+                  
                   const quadrantElements = document.querySelectorAll('.quadrant-container');
                   let hovered = null;
                   
                   quadrantElements.forEach(q => {
                     const rect = q.getBoundingClientRect();
-                    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                    if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
                       hovered = q.getAttribute('data-quadrant-id');
                     }
                   });
@@ -852,14 +853,15 @@ export const MatrixView = () => {
                 onDragEnd={(e: any, info) => {
                   setHoveredQuadrant(null);
                   
-                  const x = info.point.x;
-                  const y = info.point.y;
+                  const clientX = e.clientX ?? e.changedTouches?.[0]?.clientX ?? (info.point.x - window.scrollX);
+                  const clientY = e.clientY ?? e.changedTouches?.[0]?.clientY ?? (info.point.y - window.scrollY);
+                  
                   const quadrantElements = document.querySelectorAll('.quadrant-container');
                   let targetQuadrant: Element | null = null;
                   
                   quadrantElements.forEach(q => {
                     const rect = q.getBoundingClientRect();
-                    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+                    if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
                       targetQuadrant = q;
                     }
                   });
@@ -875,7 +877,7 @@ export const MatrixView = () => {
                 }}
                 className="cursor-grab active:cursor-grabbing touch-none select-none"
               >
-                <TaskItem task={t} />
+                <TaskItem task={t} disableDrag={true} />
               </motion.div>
             ))}
             {tasks.filter(t => !t.completed && !t.deleted && t.priority === q.priority).length === 0 && (

@@ -13,7 +13,7 @@ const priorityColors: Record<Priority, string> = {
   p4: 'text-p4 bg-p4/10',
 };
 
-export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
+export const TaskItem: React.FC<{ task: Task; disableDrag?: boolean }> = ({ task, disableDrag = false }) => {
   const { tasks, setTasks, folders, duplicateTask, tags, setTags, goals, editingTaskId, setEditingTaskId } = useAppContext();
   const expanded = editingTaskId === task.id;
   
@@ -248,12 +248,12 @@ export const TaskItem: React.FC<{ task: Task }> = ({ task }) => {
 
   return (
     <div 
-      draggable={!expanded}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      draggable={!expanded && !disableDrag}
+      onDragStart={disableDrag ? undefined : handleDragStart}
+      onDragEnd={disableDrag ? undefined : handleDragEnd}
+      onDragOver={disableDrag ? undefined : handleDragOver}
+      onDragLeave={disableDrag ? undefined : handleDragLeave}
+      onDrop={disableDrag ? undefined : handleDrop}
       className={`flex items-start gap-3 p-2.5 px-3.5 rounded-lg cursor-pointer transition-all relative mb-0.5 border group ${expanded ? 'bg-bg2 border-border-strong' : 'border-transparent hover:bg-bg2 hover:border-border-subtle'} ${(expanded ? localTask.completed : task.completed) ? 'opacity-60' : ''} ${isDragging ? 'opacity-30 border-dashed border-border-strong bg-transparent' : ''} ${isDragOver ? 'border-t-accent border-t-2 bg-bg3' : ''} ${isDeleting ? 'animate-disintegrate pointer-events-none' : ''}`}
       onClick={() => setExpanded(!expanded)}
     >
