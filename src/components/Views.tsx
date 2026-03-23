@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, useDragControls, useAnimation } from 'motion/react';
+import { motion, useDragControls, useAnimation, AnimatePresence } from 'motion/react';
 import { ChevronLeft, ChevronRight, Brain, Flame } from 'lucide-react';
 import { useAppContext } from '../store';
 import { TaskItem } from './TaskItem';
 import { getLocalDateString, parseTaskInput } from '../utils';
 import { HexColorPicker } from 'react-colorful';
-import { Archive, MatrixQuadrant } from '../types';
+import { Archive, MatrixQuadrant, Month } from '../types';
 
 const CircularProgress = ({ completed, total }: { completed: number; total: number }) => {
   const radius = 30;
@@ -109,7 +109,7 @@ export const GoalsView = () => {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {goals.map(goal => {
+        {goals.map((goal, idx) => {
           // Check if any task linked to this goal was completed today
           const completedToday = tasks.some(t => 
             t.goalId === goal.id && 
@@ -122,7 +122,13 @@ export const GoalsView = () => {
           const pendingTasks = linkedTasks.filter(t => !t.completed);
 
           return (
-            <div key={goal.id} className="bg-bg2 border border-border-subtle rounded-[10px] p-5 flex flex-col">
+            <motion.div 
+              key={goal.id} 
+              className="bg-bg2 border border-border-subtle rounded-[10px] p-5 flex flex-col"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: idx * 0.1, type: 'spring', bounce: 0.4 }}
+            >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: goal.color }}></div>
@@ -185,11 +191,17 @@ export const GoalsView = () => {
 
               <div className="mt-auto pt-4 border-t border-border-subtle">
                 <div className="text-xs font-medium text-text-muted mb-2 uppercase tracking-wider">Linked Tasks</div>
-                {pendingTasks.slice(0, 3).map(t => (
-                  <div key={t.id} className="text-sm text-text-main truncate mb-1 flex items-center gap-2">
+                {pendingTasks.slice(0, 3).map((t, tIdx) => (
+                  <motion.div 
+                    key={t.id} 
+                    className="text-sm text-text-main truncate mb-1 flex items-center gap-2"
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: (idx * 0.1) + (tIdx * 0.05), type: 'spring', bounce: 0.4 }}
+                  >
                     <div className="w-1 h-1 rounded-full bg-border-strong"></div>
                     {t.title}
-                  </div>
+                  </motion.div>
                 ))}
                 {pendingTasks.length > 3 && (
                   <div className="text-xs text-text-faint italic mt-1">+{pendingTasks.length - 3} more...</div>
@@ -198,7 +210,7 @@ export const GoalsView = () => {
                   <div className="text-xs text-text-faint italic">No pending tasks linked.</div>
                 )}
               </div>
-            </div>
+            </motion.div>
           );
         })}
         {goals.length === 0 && !isAdding && (
@@ -367,7 +379,16 @@ export const ProjectView = () => {
               {section && (
                 <div className="font-serif text-sm text-text-muted mb-2 mt-4 border-b border-border-subtle pb-1">{section}</div>
               )}
-              {sectionTasks.map(t => <TaskItem key={t.id} task={t} />)}
+              {sectionTasks.map((t, idx) => (
+                <motion.div
+                  key={t.id}
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: idx * 0.03, type: 'spring', bounce: 0.4 }}
+                >
+                  <TaskItem task={t} />
+                </motion.div>
+              ))}
             </div>
           );
         });
@@ -407,7 +428,16 @@ export const ProjectView = () => {
             <div className="flex-1 h-[1px] bg-border-subtle"></div>
             <div className="font-mono text-[10px] text-text-faint">{completedTasks.length}</div>
           </div>
-          {completedTasks.map(t => <TaskItem key={t.id} task={t} />)}
+          {completedTasks.map((t, idx) => (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: idx * 0.03, type: 'spring', bounce: 0.4 }}
+            >
+              <TaskItem task={t} />
+            </motion.div>
+          ))}
         </>
       )}
     </div>
@@ -415,7 +445,7 @@ export const ProjectView = () => {
 };
 
 export const TodayView = () => {
-  const { tasks, setTasks, tags: globalTags, setTags: setGlobalTags } = useAppContext();
+  const { tasks, setTasks, tags: globalTags, setTags: setGlobalTags, archives } = useAppContext();
   
   const baseTasks = tasks.filter(t => !t.isInbox && !t.deleted);
 
@@ -425,9 +455,13 @@ export const TodayView = () => {
     });
   };
 
+  const currentMonthName = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
+  const currentArchive = archives.find(a => a.name === currentMonthName);
+  const archivedToday = currentArchive?.items?.filter(t => t.completedDate?.startsWith(getLocalDateString())) || [];
+
   const overdue = sortTasks(baseTasks.filter(t => !t.completed && t.dueDate && t.dueDate < getLocalDateString()));
   const today = baseTasks.filter(t => !t.completed && (t.dueDate === getLocalDateString()));
-  const completed = sortTasks(baseTasks.filter(t => t.completed && t.completedDate && t.completedDate.startsWith(getLocalDateString())));
+  const completed = sortTasks([...baseTasks.filter(t => t.completed && t.completedDate && t.completedDate.startsWith(getLocalDateString())), ...archivedToday]);
   
   const totalTasks = overdue.length + today.length + completed.length;
   const completedCount = completed.length;
@@ -484,7 +518,16 @@ export const TodayView = () => {
             <div className="flex-1 h-[1px] bg-border-subtle"></div>
             <div className="font-mono text-[10px] text-text-faint">{overdue.length}</div>
           </div>
-          {overdue.map(t => <TaskItem key={t.id} task={t} />)}
+          {overdue.map((t, idx) => (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: idx * 0.03, type: 'spring', bounce: 0.4 }}
+            >
+              <TaskItem task={t} />
+            </motion.div>
+          ))}
         </>
       )}
 
@@ -497,7 +540,16 @@ export const TodayView = () => {
         <div className="font-mono text-[10px] text-text-faint">{today.length}</div>
       </div>
       
-      {today.map(t => <TaskItem key={t.id} task={t} />)}
+      {today.map((t, idx) => (
+        <motion.div
+          key={t.id}
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: (overdue.length * 0.03) + (idx * 0.03), type: 'spring', bounce: 0.4 }}
+        >
+          <TaskItem task={t} />
+        </motion.div>
+      ))}
 
       {completed.length > 0 && (
         <>
@@ -508,7 +560,16 @@ export const TodayView = () => {
             <div className="flex-1 h-[1px] bg-border-subtle"></div>
             <div className="font-mono text-[10px] text-text-faint">{completed.length}</div>
           </div>
-          {completed.map(t => <TaskItem key={t.id} task={t} />)}
+          {completed.map((t, idx) => (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: ((overdue.length + today.length) * 0.03) + (idx * 0.03), type: 'spring', bounce: 0.4 }}
+            >
+              <TaskItem task={t} />
+            </motion.div>
+          ))}
         </>
       )}
     </div>
@@ -590,7 +651,16 @@ export const InboxView = () => {
             <div className="flex-1 h-[1px] bg-border-subtle"></div>
             <div className="font-mono text-[10px] text-text-faint">{inboxTasks.length}</div>
           </div>
-          {inboxTasks.map(t => <TaskItem key={t.id} task={t} />)}
+          {inboxTasks.map((t, idx) => (
+            <motion.div
+              key={t.id}
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: idx * 0.03, type: 'spring', bounce: 0.4 }}
+            >
+              <TaskItem task={t} />
+            </motion.div>
+          ))}
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto p-3 px-3.5 md:p-5 md:px-6 flex flex-col items-center justify-center">
@@ -640,23 +710,38 @@ export const DashboardView = () => {
 
   return (
     <div className="flex-1 overflow-y-auto p-3 px-3.5 md:p-5 md:px-6 grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 content-start">
-      <div className="bg-bg2 border border-border-subtle rounded-[10px] p-4.5">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.4, type: 'spring', bounce: 0.4 }}
+        className="bg-bg2 border border-border-subtle rounded-[10px] p-4.5"
+      >
         <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-faint mb-3">Completed Today</div>
         <div className="font-serif text-4xl text-text-main leading-none">{completedToday.length}</div>
         <div className="text-xs text-text-faint mt-1">of {todayTasks.length} tasks</div>
         <div className="h-1.5 bg-bg3 rounded-full overflow-hidden mt-2 mb-0">
           <div className="h-full bg-green rounded-full transition-all" style={{ width: `${pct}%` }}></div>
         </div>
-      </div>
-      <div className="bg-bg2 border border-border-subtle rounded-[10px] p-4.5">
+      </motion.div>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1, type: 'spring', bounce: 0.4 }}
+        className="bg-bg2 border border-border-subtle rounded-[10px] p-4.5"
+      >
         <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-faint mb-3">Focus Time</div>
         <div className="font-serif text-4xl text-text-main leading-none">0h 0m</div>
         <div className="text-xs text-text-faint mt-1">0 pomodoro sessions</div>
         <div className="h-1.5 bg-bg3 rounded-full overflow-hidden mt-2 mb-0">
           <div className="h-full bg-accent rounded-full w-[0%]"></div>
         </div>
-      </div>
-      <div className="bg-bg2 border border-border-subtle rounded-[10px] p-4.5">
+      </motion.div>
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2, type: 'spring', bounce: 0.4 }}
+        className="bg-bg2 border border-border-subtle rounded-[10px] p-4.5"
+      >
         <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-faint mb-3">Weekly Streak</div>
         <div className="font-serif text-4xl text-text-main leading-none">0</div>
         <div className="text-xs text-text-faint mt-1">days active</div>
@@ -669,9 +754,14 @@ export const DashboardView = () => {
           <div className="w-2.5 h-[10px] bg-bg3 rounded-[2px]"></div>
           <div className="w-2.5 h-[10px] bg-bg3 rounded-[2px]"></div>
         </div>
-      </div>
+      </motion.div>
       
-      <div className="bg-bg2 border border-border-subtle rounded-[10px] p-4.5 col-span-1 md:col-span-2">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.3, type: 'spring', bounce: 0.4 }}
+        className="bg-bg2 border border-border-subtle rounded-[10px] p-4.5 col-span-1 md:col-span-2"
+      >
         <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-faint mb-3">Priority Breakdown</div>
         <div className="flex gap-5">
           <div className="flex-1 text-center">
@@ -691,9 +781,14 @@ export const DashboardView = () => {
             <div className="text-[11px] text-text-faint">P4 Low</div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="bg-bg2 border border-border-subtle rounded-[10px] p-4.5 col-span-1 md:col-span-2 lg:col-span-1">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.4, type: 'spring', bounce: 0.4 }}
+        className="bg-bg2 border border-border-subtle rounded-[10px] p-4.5 col-span-1 md:col-span-2 lg:col-span-1"
+      >
         <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-faint mb-3">Inbox</div>
         <div className="font-serif text-4xl text-orange leading-none">{inboxTasks.length}</div>
         <div className="text-xs text-text-faint mt-1">items need processing</div>
@@ -703,7 +798,7 @@ export const DashboardView = () => {
         >
           Process now →
         </button>
-      </div>
+      </motion.div>
     </div>
   );
 };
@@ -745,22 +840,27 @@ export const MatrixView = () => {
         <span className="text-xs text-text-faint">Eisenhower Matrix — click titles or subtitles to edit · click color dot to recolor</span>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-[1px] flex-1 bg-border-subtle">
-        {quadrants.map(q => (
+        {quadrants.map((q, idx) => (
           <div 
             key={q.id} 
             data-quadrant-id={q.id}
             data-priority={q.priority}
-            className={`bg-bg p-5 flex flex-col gap-2 relative quadrant-container transition-colors duration-200 min-h-[300px] md:min-h-[40vh] ${
-              hoveredQuadrant === q.id ? 'bg-accent/5 ring-2 ring-inset ring-accent/30' : ''
+            className={`bg-bg p-5 flex flex-col gap-2 relative quadrant-container transition-all duration-200 min-h-[300px] md:min-h-[40vh] ${
+              hoveredQuadrant === q.id ? 'bg-accent/10 ring-4 ring-inset ring-accent shadow-[inset_0_0_20px_rgba(var(--color-accent-rgb),0.2)]' : ''
             }`}
           >
-            <div className="mb-2 flex items-start justify-between">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ delay: idx * 0.1, type: 'spring', bounce: 0.3 }}
+              className="mb-2 flex items-start justify-between"
+            >
               <div className="flex-1">
                 <div className="relative inline-block">
                   {editingQuadrant === q.id && editingField === 'title' ? (
                     <input
                       autoFocus
-                      className="font-serif text-base bg-transparent border-none outline-none text-text-main w-full border-b border-accent"
+                      className="font-serif text-base bg-transparent border-none outline-none text-text-main w-full border-b border-accent uppercase tracking-wide"
                       value={editValue}
                       onChange={e => setEditValue(e.target.value)}
                       onBlur={() => handleSave(q.id, 'title')}
@@ -768,7 +868,7 @@ export const MatrixView = () => {
                     />
                   ) : (
                     <div 
-                      className="font-serif text-base outline-none cursor-pointer border-b border-transparent hover:border-white/15 inline-block min-w-[20px]"
+                      className="font-serif text-base outline-none cursor-pointer border-b border-transparent hover:border-white/15 inline-block min-w-[20px] uppercase tracking-wide"
                       style={{ color: q.color }}
                       onClick={() => {
                         setEditingQuadrant(q.id);
@@ -792,7 +892,7 @@ export const MatrixView = () => {
                     />
                   ) : (
                     <div 
-                      className="text-[11px] text-text-faint font-mono outline-none cursor-pointer block hover:text-text-muted"
+                      className="text-[11px] text-text-faint font-mono outline-none cursor-pointer block hover:text-text-muted uppercase tracking-wider"
                       onClick={() => {
                         setEditingQuadrant(q.id);
                         setEditingField('subtitle');
@@ -819,18 +919,24 @@ export const MatrixView = () => {
                   </div>
                 )}
               </div>
-            </div>
-            {tasks.filter(t => !t.completed && !t.deleted && t.priority === q.priority).sort((a, b) => a.title.localeCompare(b.title)).map(t => (
+            </motion.div>
+            {tasks.filter(t => !t.completed && !t.deleted && t.priority === q.priority).sort((a, b) => a.title.localeCompare(b.title)).map((t, tIdx) => (
               <motion.div
                 key={t.id}
                 layout
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: (idx * 0.1) + (tIdx * 0.05), type: 'spring', bounce: 0.4 }}
                 drag
                 dragSnapToOrigin
                 whileHover={{ scale: 1.02 }}
                 whileDrag={{ 
                   scale: 1.05, 
+                  rotate: 2,
                   zIndex: 1000, 
-                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
+                  boxShadow: '0 0 0 2px var(--color-accent), 0 20px 25px -5px rgba(0, 0, 0, 0.3)',
+                  borderColor: 'var(--color-accent)',
+                  borderRadius: '8px',
                   cursor: 'grabbing',
                   pointerEvents: 'none'
                 }}
@@ -896,13 +1002,16 @@ export const ArchiveView = () => {
   const { archives, setArchives } = useAppContext();
   const [isAdding, setIsAdding] = useState(false);
   const [newArchiveName, setNewArchiveName] = useState('');
-  const [newArchiveQuarter, setNewArchiveQuarter] = useState<'q1' | 'q2' | 'q3' | 'q4'>('q1');
+  const [newArchiveMonth, setNewArchiveMonth] = useState<Month>('January');
   const [editingArchiveId, setEditingArchiveId] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<'name' | 'tags' | null>(null);
   const [editValue, setEditValue] = useState('');
   const [expandedArchiveId, setExpandedArchiveId] = useState<string | null>(null);
 
-  const quarters = ['q1', 'q2', 'q3', 'q4'] as const;
+  const months: Month[] = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
 
   const handleAddArchive = () => {
     if (!newArchiveName.trim()) return;
@@ -915,7 +1024,7 @@ export const ArchiveView = () => {
       tasks: 0,
       completed: 0,
       tags: [],
-      quarter: newArchiveQuarter,
+      month: newArchiveMonth,
       items: []
     };
     setArchives(prev => [...prev, newArchive]);
@@ -963,10 +1072,10 @@ export const ArchiveView = () => {
             />
             <select 
               className="bg-bg3 border border-border-strong rounded px-2 py-1 text-sm text-text-main outline-none"
-              value={newArchiveQuarter}
-              onChange={e => setNewArchiveQuarter(e.target.value as any)}
+              value={newArchiveMonth}
+              onChange={e => setNewArchiveMonth(e.target.value as Month)}
             >
-              {quarters.map(q => <option key={q} value={q}>{q.toUpperCase()}</option>)}
+              {months.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
           <div className="flex justify-end gap-2">
@@ -977,17 +1086,53 @@ export const ArchiveView = () => {
       )}
 
       <div className="flex-1 overflow-y-auto p-4">
-        {quarters.map(q => (
-          <div key={q} className="mb-6">
-            <h3 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wider border-b border-border-subtle pb-1">{q.toUpperCase()}</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {archives.filter(a => a.quarter === q).sort((a, b) => a.name.localeCompare(b.name)).map(a => (
-                <div 
+        {archives.length === 0 && (
+          <div className="text-center py-20">
+            <div className="text-text-faint text-sm italic opacity-50 mb-2">No archives yet.</div>
+            <div className="text-text-faint text-xs opacity-40">Completed tasks will be automatically archived here.</div>
+          </div>
+        )}
+
+        {months.map(m => {
+          const monthArchives = archives.filter(a => a.month === m);
+          if (monthArchives.length === 0) return null;
+          
+          // Group archives by name to avoid duplicate cards for the same month
+          const groupedArchives: Record<string, Archive> = {};
+          monthArchives.forEach(a => {
+            if (!groupedArchives[a.name]) {
+              groupedArchives[a.name] = { ...a, items: [...(a.items || [])] };
+            } else {
+              // Merge items and update counts
+              const existing = groupedArchives[a.name];
+              const newItems = a.items || [];
+              newItems.forEach(item => {
+                if (!existing.items?.find(i => i.id === item.id)) {
+                  existing.items?.push(item);
+                  existing.tasks++;
+                  if (item.completed) existing.completed++;
+                }
+              });
+            }
+          });
+
+          const displayArchives = Object.values(groupedArchives).sort((a, b) => a.name.localeCompare(b.name));
+          
+          return (
+            <div key={m} className="mb-6">
+              <h3 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wider border-b border-border-subtle pb-1">{m}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {displayArchives.map((a, idx) => (
+                <motion.div 
                   key={a.id} 
                   className={`bg-bg2 border border-border-subtle rounded-[10px] p-4 transition-all cursor-pointer hover:border-accent/50 ${expandedArchiveId === a.id ? 'row-span-2 col-span-full md:col-span-2 lg:col-span-3 ring-1 ring-accent' : ''}`}
+                  style={{ borderLeft: `4px solid ${a.color}` }}
                   onClick={() => {
                     if (!editingArchiveId) setExpandedArchiveId(expandedArchiveId === a.id ? null : a.id);
                   }}
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: idx * 0.05, type: 'spring', bounce: 0.4 }}
                 >
                   <div className="flex justify-between items-start mb-2">
                     {editingArchiveId === a.id && editingField === 'name' ? (
@@ -1013,8 +1158,8 @@ export const ArchiveView = () => {
                         {a.name}
                       </div>
                     )}
-                    <div className="text-xs font-mono text-text-faint bg-bg3 px-2 py-1 rounded-md">
-                      {a.tasks} tasks
+                    <div className="text-xs font-mono text-text-faint bg-bg3 px-2 py-1 rounded-md flex flex-col items-end">
+                      <span>{a.tasks} tasks</span>
                     </div>
                   </div>
                   
@@ -1059,8 +1204,14 @@ export const ArchiveView = () => {
                       
                       {a.items && a.items.length > 0 ? (
                         <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                          {a.items.map(item => (
-                            <div key={item.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-bg3 transition-colors group">
+                          {a.items.map((item, itemIdx) => (
+                            <motion.div 
+                              key={item.id} 
+                              className="flex items-start gap-3 p-2 rounded-lg hover:bg-bg3 transition-colors group"
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: itemIdx * 0.03 }}
+                            >
                               <div className="mt-0.5 text-accent">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                               </div>
@@ -1073,7 +1224,7 @@ export const ArchiveView = () => {
                                   )}
                                 </div>
                               </div>
-                            </div>
+                            </motion.div>
                           ))}
                         </div>
                       ) : (
@@ -1088,14 +1239,13 @@ export const ArchiveView = () => {
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                     </div>
                   )}
-                </div>
+                </motion.div>
               ))}
-              {archives.filter(a => a.quarter === q).length === 0 && (
-                <div className="text-text-faint text-xs italic opacity-50 p-4 border border-dashed border-border-subtle rounded-lg text-center">No archives in {q.toUpperCase()}</div>
-              )}
+
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -1206,8 +1356,15 @@ export const FolderView = () => {
             <span className="text-[10px] text-text-faint ml-auto">{folderTasks.filter(t => t.project === activeFolder).length}</span>
           </div>
           <div className="flex flex-col">
-            {folderTasks.filter(t => t.project === activeFolder).map(t => (
-              <TaskItem key={t.id} task={t} />
+            {folderTasks.filter(t => t.project === activeFolder).map((t, idx) => (
+              <motion.div
+                key={t.id}
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: idx * 0.03, type: 'spring', bounce: 0.4 }}
+              >
+                <TaskItem task={t} />
+              </motion.div>
             ))}
           </div>
         </div>
@@ -1264,8 +1421,15 @@ export const FolderView = () => {
               </div>
               <div className="flex flex-col">
                 {projectTasks.length > 0 ? (
-                  projectTasks.map(t => (
-                    <TaskItem key={t.id} task={t} />
+                  projectTasks.map((t, idx) => (
+                    <motion.div
+                      key={t.id}
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: idx * 0.03, type: 'spring', bounce: 0.4 }}
+                    >
+                      <TaskItem task={t} />
+                    </motion.div>
                   ))
                 ) : (
                   <div className="text-xs text-text-faint italic py-2">No tasks in this project.</div>
@@ -1341,14 +1505,17 @@ export const TagsView = () => {
   return (
     <div className="flex-1 overflow-y-auto p-3 px-3.5 md:p-5 md:px-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-start">
-        {tags.map(tag => {
+        {tags.map((tag, index) => {
           const tagTasks = tasks
             .filter(t => !t.deleted && !t.completed && t.tags.includes(tag.name))
             .sort((a, b) => a.title.localeCompare(b.title));
 
           return (
-            <div 
+            <motion.div 
               key={tag.id} 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: index * 0.05, type: 'spring', bounce: 0.4 }}
               className="bg-bg2 rounded-xl border border-border-subtle flex flex-col max-h-[400px]"
               onDragOver={(e) => {
                 e.preventDefault();
@@ -1400,8 +1567,15 @@ export const TagsView = () => {
               </div>
               <div className="flex-1 overflow-y-auto p-2 custom-scrollbar min-h-[100px]">
                 {tagTasks.length > 0 ? (
-                  tagTasks.map(t => (
-                    <TaskItem key={t.id} task={t} />
+                  tagTasks.map((t, idx) => (
+                    <motion.div
+                      key={t.id}
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: idx * 0.03, type: 'spring', bounce: 0.4 }}
+                    >
+                      <TaskItem task={t} />
+                    </motion.div>
                   ))
                 ) : (
                   <div className="h-full flex flex-col items-center justify-center text-text-faint text-xs italic opacity-50 py-8">
@@ -1409,12 +1583,18 @@ export const TagsView = () => {
                   </div>
                 )}
               </div>
-            </div>
+            </motion.div>
           );
         })}
 
         {/* Add Tag Card */}
-        <div className="bg-bg2 rounded-xl border border-dashed border-border-strong flex flex-col items-center justify-center p-6 min-h-[150px] hover:bg-bg3 transition-colors cursor-pointer group" onClick={() => setIsAddingTag(true)}>
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: tags.length * 0.05, type: 'spring', bounce: 0.4 }}
+          className="bg-bg2 rounded-xl border border-dashed border-border-strong flex flex-col items-center justify-center p-6 min-h-[150px] hover:bg-bg3 transition-colors cursor-pointer group" 
+          onClick={() => setIsAddingTag(true)}
+        >
           {!isAddingTag ? (
             <>
               <div className="w-10 h-10 rounded-full bg-bg3 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
@@ -1468,7 +1648,7 @@ export const TagsView = () => {
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
     </div>
   );
@@ -1513,7 +1693,11 @@ export const TrashView = () => {
 
   return (
     <div className="flex-1 overflow-y-auto p-3 px-3.5 md:p-5 md:px-6">
-      <div className="flex justify-between items-center mb-6">
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex justify-between items-center mb-6"
+      >
         <h2 className="text-lg font-medium text-text-main">Trash</h2>
         {(deletedTasks.length > 0 || deletedFolders.length > 0 || deletedNotes.length > 0) && (
           <button 
@@ -1523,14 +1707,26 @@ export const TrashView = () => {
             Empty Trash
           </button>
         )}
-      </div>
+      </motion.div>
 
       {deletedFolders.length > 0 && (
         <div className="mb-8">
-          <h3 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wider">Deleted Folders</h3>
+          <motion.h3 
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wider"
+          >
+            Deleted Folders
+          </motion.h3>
           <div className="flex flex-col gap-2">
-            {deletedFolders.map(f => (
-              <div key={f.id} className="flex items-center justify-between p-3 rounded-lg border border-border-subtle bg-bg2">
+            {deletedFolders.map((f, idx) => (
+              <motion.div 
+                key={f.id} 
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                className="flex items-center justify-between p-3 rounded-lg border border-border-subtle bg-bg2"
+              >
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: f.color }}></div>
                   <span className="text-sm text-text-main">{f.name}</span>
@@ -1539,7 +1735,7 @@ export const TrashView = () => {
                   <button onClick={() => restoreFolder(f.id)} className="text-xs text-text-muted hover:text-text-main px-2 py-1 rounded hover:bg-bg3">Restore</button>
                   <button onClick={() => permanentDeleteFolder(f.id)} className="text-xs text-red-500 hover:text-red-400 px-2 py-1 rounded hover:bg-red-500/10">Delete Forever</button>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -1547,10 +1743,23 @@ export const TrashView = () => {
 
       {deletedTasks.length > 0 && (
         <div className="mb-8">
-          <h3 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wider">Deleted Tasks</h3>
+          <motion.h3 
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wider"
+          >
+            Deleted Tasks
+          </motion.h3>
           <div className="flex flex-col gap-1">
-            {deletedTasks.map(t => (
-              <div key={t.id} className="flex items-center justify-between p-2 rounded-lg border border-border-subtle bg-bg2 group">
+            {deletedTasks.map((t, idx) => (
+              <motion.div 
+                key={t.id} 
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ delay: 0.1 + (idx * 0.03) }}
+                className="flex items-center justify-between p-2 rounded-lg border border-border-subtle bg-bg2 group"
+              >
                 <div className="flex items-center gap-3">
                   <div className={`w-4 h-4 rounded-full border-[1.5px] shrink-0 flex items-center justify-center border-text-faint`}></div>
                   <span className="text-[13.5px] text-text-main line-through opacity-70">{t.title}</span>
@@ -1559,7 +1768,7 @@ export const TrashView = () => {
                   <button onClick={() => restoreTask(t.id)} className="text-xs text-text-muted hover:text-text-main px-2 py-1 rounded hover:bg-bg3">Restore</button>
                   <button onClick={() => permanentDeleteTask(t.id)} className="text-xs text-red-500 hover:text-red-400 px-2 py-1 rounded hover:bg-red-500/10">Delete Forever</button>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -1567,10 +1776,23 @@ export const TrashView = () => {
 
       {deletedNotes.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wider">Deleted Notes</h3>
+          <motion.h3 
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-sm font-medium text-text-muted mb-3 uppercase tracking-wider"
+          >
+            Deleted Notes
+          </motion.h3>
           <div className="flex flex-col gap-1">
-            {deletedNotes.map(n => (
-              <div key={n.id} className="flex items-center justify-between p-2 rounded-lg border border-border-subtle bg-bg2 group">
+            {deletedNotes.map((n, idx) => (
+              <motion.div 
+                key={n.id} 
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ delay: 0.2 + (idx * 0.03) }}
+                className="flex items-center justify-between p-2 rounded-lg border border-border-subtle bg-bg2 group"
+              >
                 <div className="flex items-center gap-3">
                   <div className="w-4 h-4 rounded-full shrink-0" style={{ backgroundColor: n.color }}></div>
                   <span className="text-[13.5px] text-text-main opacity-70">{n.title || 'Untitled Note'}</span>
@@ -1579,7 +1801,7 @@ export const TrashView = () => {
                   <button onClick={() => restoreNote(n.id)} className="text-xs text-text-muted hover:text-text-main px-2 py-1 rounded hover:bg-bg3">Restore</button>
                   <button onClick={() => permanentDeleteNote(n.id)} className="text-xs text-red-500 hover:text-red-400 px-2 py-1 rounded hover:bg-red-500/10">Delete Forever</button>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -1610,7 +1832,16 @@ export const UpcomingView = () => {
         <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-text-faint">Tomorrow — {new Date(tomorrowStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
         <div className="flex-1 h-[1px] bg-border-subtle"></div>
       </div>
-      {tomorrowTasks.length > 0 ? tomorrowTasks.map(t => <TaskItem key={t.id} task={t} />) : (
+      {tomorrowTasks.length > 0 ? tomorrowTasks.map((t, idx) => (
+        <motion.div
+          key={t.id}
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: idx * 0.03, type: 'spring', bounce: 0.4 }}
+        >
+          <TaskItem task={t} />
+        </motion.div>
+      )) : (
         <div className="text-text-faint text-sm italic opacity-50 p-2">No tasks scheduled for tomorrow.</div>
       )}
     </div>
@@ -1812,11 +2043,19 @@ export const CalendarView = () => {
         </div>
         
         {/* Calendar Days */}
-        <div className="grid grid-cols-7 gap-y-2">
-          {displayDays.map((dateObj, i) => {
-            const isSelected = dateObj.date.getDate() === selectedDate.getDate() && 
-                               dateObj.date.getMonth() === selectedDate.getMonth() && 
-                               dateObj.date.getFullYear() === selectedDate.getFullYear();
+        <AnimatePresence mode="wait">
+          <motion.div 
+            key={viewMode + currentDate.toISOString()}
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            transition={{ duration: 0.15 }}
+            className="grid grid-cols-7 gap-y-2"
+          >
+            {displayDays.map((dateObj, i) => {
+              const isSelected = dateObj.date.getDate() === selectedDate.getDate() && 
+                                 dateObj.date.getMonth() === selectedDate.getMonth() && 
+                                 dateObj.date.getFullYear() === selectedDate.getFullYear();
             
             const dateStr = getLocalDateString(dateObj.date);
             const dayTasks = tasks.filter(t => t.dueDate === dateStr && !t.deleted && !t.completed);
@@ -1857,7 +2096,8 @@ export const CalendarView = () => {
               </div>
             );
           })}
-        </div>
+          </motion.div>
+        </AnimatePresence>
       </section>
 
       {/* Daily Tasks List Section */}

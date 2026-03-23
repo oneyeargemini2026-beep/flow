@@ -46,6 +46,8 @@ export interface Folder {
   deleted?: boolean;
 }
 
+export type Month = 'January' | 'February' | 'March' | 'April' | 'May' | 'June' | 'July' | 'August' | 'September' | 'October' | 'November' | 'December';
+
 export interface Archive {
   id: string;
   name: string;
@@ -55,7 +57,7 @@ export interface Archive {
   tasks: number;
   completed: number;
   tags: string[];
-  quarter?: 'q1' | 'q2' | 'q3' | 'q4';
+  month?: Month;
   items?: Task[];
 }
 

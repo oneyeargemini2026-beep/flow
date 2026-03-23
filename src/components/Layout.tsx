@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAppContext } from '../store';
 import { ViewType } from '../types';
 import { HexColorPicker } from 'react-colorful';
-import { Sun, Calendar, Inbox, Target, LayoutGrid, CalendarDays, Archive, Tag, LayoutDashboard, History, Trash2, Brain, StickyNote } from 'lucide-react';
+import { Sun, Calendar, Inbox, Target, LayoutGrid, CalendarDays, Archive, Tag, LayoutDashboard, History, Trash2, Brain, StickyNote, LogOut } from 'lucide-react';
 
 export const Sidebar = () => {
   const { currentView, setCurrentView, folders, setFolders, setIsFocusOpen, setIsAddTaskOpen, activeProject, setActiveProject, isSidebarOpen, setIsSidebarOpen, tasks, setTasks, moveProject, renameProject, tags, setTags, activeFolder, setActiveFolder, signOutUser } = useAppContext();
@@ -460,15 +461,17 @@ export const Sidebar = () => {
 
         <div className="flex-1 flex flex-col overflow-y-auto no-scrollbar">
           <div className="p-3 pb-1 shrink-0">
-            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-faint px-2 pb-2">Views</div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-faint px-2 pb-2">VIEWS</div>
             {topNavItems.map(item => (
-              <div 
+              <motion.div 
                 key={item.id}
+                whileHover={{ scale: 1.02, x: 4 }}
+                whileTap={{ scale: 0.98 }}
                 className={`flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] transition-colors relative shrink-0 mb-0 ${currentView === item.id && !activeProject ? 'bg-accent/15' : 'hover:bg-bg3'}`}
                 onClick={() => handleNavClick(item.id)}
               >
                 <span className="w-4 text-center text-white">{item.icon}</span>
-                <span className="text-white">{item.label}</span>
+                <span className="text-white uppercase tracking-wide text-[11px] font-medium">{item.label}</span>
                 {item.id === 'today' ? (
                   <div className="ml-auto flex items-center justify-center w-5 h-5 relative">
                     <svg width="20" height="20" viewBox="0 0 20 20" className="transform -rotate-90">
@@ -493,15 +496,17 @@ export const Sidebar = () => {
                     {item.badge}
                   </span>
                 ) : null}
-              </div>
+              </motion.div>
             ))}
           </div>
 
           <div className="p-3 pb-1 mt-0 border-t-0">
-            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-faint px-2 pb-2">Folders</div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-faint px-2 pb-2">FOLDERS</div>
             {folders.filter(f => !f.deleted).map(folder => (
-              <div 
+              <motion.div 
                 key={folder.id} 
+                whileHover={{ scale: 1.02, x: 4 }}
+                whileTap={{ scale: 0.98 }}
                 className={`flex flex-col items-stretch mb-0 transition-all ${draggedFolderId === folder.id ? 'opacity-30 border-dashed border-border-strong bg-transparent' : ''} ${dragOverFolderId === folder.id ? 'border-t-accent border-t-2 bg-bg3 rounded-lg' : ''} ${deletingFolderId === folder.id ? 'animate-disintegrate pointer-events-none' : ''}`}
                 draggable
                 onDragStart={(e) => handleFolderDragStart(e, folder.id)}
@@ -539,11 +544,11 @@ export const Sidebar = () => {
                         if (e.key === 'Escape') setEditingFolderId(null);
                       }}
                       onClick={e => e.stopPropagation()}
-                      className="flex-1 bg-transparent border-none outline-none text-[13.5px] text-text-main"
+                      className="flex-1 bg-transparent border-none outline-none text-[13.5px] text-text-main uppercase tracking-wide font-medium"
                     />
                   ) : (
                     <div 
-                      className="flex-1 truncate"
+                      className="flex-1 truncate uppercase tracking-wide font-medium"
                       style={{ color: folder.color }}
                       onDoubleClick={(e) => {
                         e.stopPropagation();
@@ -653,7 +658,7 @@ export const Sidebar = () => {
                     )}
                   </div>
                 )}
-              </div>
+              </motion.div>
             ))}
             {isCreatingFolder ? (
               <div className="flex flex-col gap-2 p-2 px-2.5 mt-1 bg-bg3 rounded-lg border border-border-strong">
@@ -706,19 +711,21 @@ export const Sidebar = () => {
 
           <div className="p-3 pt-1 shrink-0 mt-2 border-t border-border-subtle">
             {bottomNavItems.map(item => (
-              <div 
+              <motion.div 
                 key={item.id}
+                whileHover={{ scale: 1.02, x: 4 }}
+                whileTap={{ scale: 0.98 }}
                 className={`flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] transition-colors relative shrink-0 mb-0 ${currentView === item.id && !activeProject ? 'bg-accent/15' : 'hover:bg-bg3'}`}
                 onClick={() => handleNavClick(item.id)}
               >
                 <span className="w-4 text-center text-white">{item.icon}</span>
-                <span className="text-white">{item.label}</span>
+                <span className="text-white uppercase tracking-wide text-[11px] font-medium">{item.label}</span>
                 {item.badge ? (
                   <span className={`ml-auto font-mono text-[10px] px-1.5 py-[1px] rounded-full ${currentView === item.id && !activeProject ? 'bg-accent/25 text-accent2' : 'bg-bg4 text-text-faint'}`}>
                     {item.badge}
                   </span>
                 ) : null}
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -729,7 +736,7 @@ export const Sidebar = () => {
             <span className="text-white">Focus Mode</span>
           </div>
           <div className="flex items-center gap-2.5 p-2 px-2.5 rounded-lg cursor-pointer text-[13.5px] text-red-500 hover:bg-red-500/10 transition-colors mt-1" onClick={() => { signOutUser(); if (window.innerWidth < 768) setIsSidebarOpen(false); }}>
-            <span className="w-4 text-center"><Trash2 size={16} /></span>
+            <span className="w-4 text-center"><LogOut size={16} /></span>
             <span className="text-red-500">Sign Out</span>
           </div>
         </div>
@@ -836,7 +843,7 @@ export const Topbar = () => {
               }
             }}
           >
-            <span className={activeProject ? 'hover:underline decoration-dotted underline-offset-4' : ''}>{title}</span>
+            <span className={`${activeProject ? 'hover:underline decoration-dotted underline-offset-4' : ''} uppercase tracking-wider font-medium text-sm md:text-base`}>{title}</span>
             {activeProject && (
               <button
                 className="opacity-0 group-hover/topbar-title:opacity-100 text-text-faint hover:text-text-main transition-opacity"

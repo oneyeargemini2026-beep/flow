@@ -247,14 +247,17 @@ export const TaskItem: React.FC<{ task: Task; disableDrag?: boolean }> = ({ task
   };
 
   return (
-    <div 
+    <motion.div 
+      layout
       draggable={!expanded && !disableDrag}
       onDragStart={disableDrag ? undefined : handleDragStart}
       onDragEnd={disableDrag ? undefined : handleDragEnd}
       onDragOver={disableDrag ? undefined : handleDragOver}
       onDragLeave={disableDrag ? undefined : handleDragLeave}
       onDrop={disableDrag ? undefined : handleDrop}
-      className={`flex items-start gap-3 p-2.5 px-3.5 rounded-lg cursor-pointer transition-all relative mb-0.5 border group ${expanded ? 'bg-bg2 border-border-strong' : 'border-transparent hover:bg-bg2 hover:border-border-subtle'} ${(expanded ? localTask.completed : task.completed) ? 'opacity-60' : ''} ${isDragging ? 'opacity-30 border-dashed border-border-strong bg-transparent' : ''} ${isDragOver ? 'border-t-accent border-t-2 bg-bg3' : ''} ${isDeleting ? 'animate-disintegrate pointer-events-none' : ''}`}
+      whileHover={!expanded && !isDragging ? { scale: 1.01, y: -1, boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)' } : {}}
+      transition={{ duration: 0.2 }}
+      className={`flex items-start gap-3 p-2.5 px-3.5 rounded-lg cursor-pointer transition-all relative mb-0.5 border group ${expanded ? 'bg-bg2 border-border-strong' : 'border-transparent hover:bg-bg2 hover:border-border-subtle'} ${(expanded ? localTask.completed : task.completed) ? 'opacity-60' : ''} ${isDragging ? 'opacity-30 border-dashed border-border-strong bg-transparent' : ''} ${isDragOver ? 'border-t-accent border-t-2 bg-bg3' : ''} ${isDeleting ? 'animate-disintegrate pointer-events-none' : ''} ${task.completed && task.completedDate && task.dueDate && task.completedDate.split('T')[0] > task.dueDate ? 'border-l-red-500 border-l-4' : ''}`}
       onClick={() => setExpanded(!expanded)}
     >
       <div className="text-text-muted text-xs cursor-grab opacity-100 md:opacity-0 md:group-hover:opacity-100 mt-0.5 transition-opacity absolute left-1">⠿</div>
@@ -294,6 +297,12 @@ export const TaskItem: React.FC<{ task: Task; disableDrag?: boolean }> = ({ task
           <div className={`text-sm mb-[3px] ${task.completed ? 'line-through text-text-faint' : 'text-text-main'}`}>{task.title}</div>
         )}
         <div className="flex items-center gap-2 flex-wrap">
+          {!task.completed && task.dueDate && task.dueDate < getLocalDateString() && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 font-medium font-mono uppercase tracking-wider">Overdue</span>
+          )}
+          {task.completed && task.completedDate && task.dueDate && task.completedDate.split('T')[0] > task.dueDate && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 font-medium font-mono uppercase tracking-wider">Late</span>
+          )}
           {expanded ? (
             <select 
               value={localTask.priority}
@@ -606,6 +615,6 @@ export const TaskItem: React.FC<{ task: Task; disableDrag?: boolean }> = ({ task
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 };

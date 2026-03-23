@@ -5,6 +5,7 @@ import { TodayView, InboxView, UpcomingView, DashboardView, MatrixView, Calendar
 import { NotesView } from './components/NotesView';
 import { AddTaskModal, ProcessInboxModal, FocusOverlay } from './components/Modals';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { AnimatePresence, motion } from 'motion/react';
 
 const LoginView = () => {
   const { signIn } = useAppContext();
@@ -131,21 +132,32 @@ const MainContent = () => {
   return (
     <main className="flex-1 flex flex-col overflow-hidden bg-bg">
       <Topbar />
-      <div className="flex-1 overflow-hidden flex">
-        {currentView === 'today' && <TodayView />}
-        {currentView === 'inbox' && <InboxView />}
-        {currentView === 'upcoming' && <UpcomingView />}
-        {currentView === 'dashboard' && <DashboardView />}
-        {currentView === 'matrix' && <MatrixView />}
-        {currentView === 'calendar' && <CalendarView />}
-        {currentView === 'notes' && <NotesView />}
-        {currentView === 'archive' && <ArchiveView />}
-        {currentView === 'tags' && <TagsView />}
-        {currentView === 'goals' && <GoalsView />}
-        {currentView === 'folder' && <FolderView />}
-        {currentView === 'project' && <ProjectView />}
-        {currentView === 'trash' && <TrashView />}
-        {currentView === 'history' && <HistoryView />}
+      <div className="flex-1 overflow-hidden flex relative">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentView}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.15, ease: "easeInOut" }}
+            className="flex-1 flex flex-col w-full h-full absolute inset-0"
+          >
+            {currentView === 'today' && <TodayView />}
+            {currentView === 'inbox' && <InboxView />}
+            {currentView === 'upcoming' && <UpcomingView />}
+            {currentView === 'dashboard' && <DashboardView />}
+            {currentView === 'matrix' && <MatrixView />}
+            {currentView === 'calendar' && <CalendarView />}
+            {currentView === 'notes' && <NotesView />}
+            {currentView === 'archive' && <ArchiveView />}
+            {currentView === 'tags' && <TagsView />}
+            {currentView === 'goals' && <GoalsView />}
+            {currentView === 'folder' && <FolderView />}
+            {currentView === 'project' && <ProjectView />}
+            {currentView === 'trash' && <TrashView />}
+            {currentView === 'history' && <HistoryView />}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </main>
   );

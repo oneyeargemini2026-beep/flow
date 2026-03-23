@@ -30,10 +30,12 @@ const NoteCard: React.FC<{
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      whileHover={{ y: -2, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+      initial={{ opacity: 0, scale: 0.8, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.8, y: 20 }}
+      whileHover={{ y: -4, scale: 1.02, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)' }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: 'spring', bounce: 0.4, duration: 0.5 }}
       className="rounded-xl border border-border-strong p-4 cursor-pointer relative group break-inside-avoid mb-4 overflow-hidden"
       style={{ backgroundColor: note.color }}
       onClick={() => onEdit(note)}
@@ -233,7 +235,7 @@ export const NotesView = () => {
 
       {pinnedNotes.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-text-faint mb-4 ml-2">Pinned</h2>
+          <h2 className="text-[10px] font-mono uppercase tracking-[0.15em] text-text-faint mb-4 ml-2">PINNED</h2>
           <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
             <AnimatePresence>
               {pinnedNotes.map(note => (
@@ -253,7 +255,7 @@ export const NotesView = () => {
 
       {otherNotes.length > 0 && (
         <div>
-          {pinnedNotes.length > 0 && <h2 className="text-xs font-bold uppercase tracking-wider text-text-faint mb-4 ml-2">Others</h2>}
+          {pinnedNotes.length > 0 && <h2 className="text-[10px] font-mono uppercase tracking-[0.15em] text-text-faint mb-4 ml-2">OTHERS</h2>}
           <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
             <AnimatePresence>
               {otherNotes.map(note => (

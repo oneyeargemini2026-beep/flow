@@ -39,8 +39,8 @@ service cloud.firestore {
     
     function isDocOwner() {
       return isAuthenticated() && (
-        (resource != null && request.auth.uid == resource.data.userId) ||
-        (resource == null && request.auth.uid == request.resource.data.userId)
+        (resource == null && 'userId' in request.resource.data && request.auth.uid == request.resource.data.userId) ||
+        (resource != null && (!('userId' in resource.data) || request.auth.uid == resource.data.userId))
       );
     }
 

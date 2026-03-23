@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { Task, Folder, Archive, ViewType, MatrixConfig, Tag, Goal, Note } from './types';
+import { Task, Folder, Archive, ViewType, MatrixConfig, Tag, Goal, Note, Month } from './types';
 import { getLocalDateString, sanitizeData } from './utils';
 import { auth, db } from '@/src/lib/firebase';
 import { signInWithGoogle } from '@/src/lib/auth';
@@ -309,8 +309,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
     const today = getLocalDateString();
     const tasksToArchive = tasks.filter(t => {
       if (!t.completed || !t.completedDate) return false;
-      const taskDate = t.completedDate.split('T')[0];
-      return taskDate < today;
+      return true; // Archive all completed tasks immediately
     });
 
     if (tasksToArchive.length > 0) {
@@ -322,38 +321,43 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
           const monthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
           const archiveName = monthYear;
           
-          let archive = newArchives.find(a => a.name === archiveName);
+          let archiveIndex = newArchives.findIndex(a => a.name === archiveName);
+          let archive: Archive;
           
-          if (!archive) {
-            const month = date.getMonth() + 1;
-            let quarter: 'q1' | 'q2' | 'q3' | 'q4' = 'q1';
-            if (month > 3) quarter = 'q2';
-            if (month > 6) quarter = 'q3';
-            if (month > 9) quarter = 'q4';
+          if (archiveIndex === -1) {
+            const monthName = date.toLocaleString('default', { month: 'long' }) as Month;
 
             archive = {
               id: `arch-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
               name: archiveName,
-              color: '#8888a0',
+              color: '#3ecf8e', // Default to green
               start: task.completedDate!,
               end: task.completedDate!,
               tasks: 0,
               completed: 0,
               tags: [],
-              quarter: quarter,
+              month: monthName,
               items: []
             };
             newArchives.push(archive);
+            archiveIndex = newArchives.length - 1;
+          } else {
+            // Create a new object to ensure immutability
+            archive = { ...newArchives[archiveIndex] };
+            if (!archive.items) archive.items = [];
+            newArchives[archiveIndex] = archive;
           }
           
-          if (!archive.items) archive.items = [];
-          if (!archive.items.find(t => t.id === task.id)) {
-             archive.items.push(task);
+          if (!archive.items!.find(t => t.id === task.id)) {
+             archive.items!.push(task);
              archive.tasks++;
              archive.completed++;
              
              if (task.completedDate! < archive.start) archive.start = task.completedDate!;
              if (task.completedDate! > archive.end) archive.end = task.completedDate!;
+             
+             // Set default color for archives
+             archive.color = '#7c6af7';
           }
         });
         
