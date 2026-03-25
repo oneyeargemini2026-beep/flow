@@ -119,15 +119,6 @@ export const Sidebar = () => {
     setEditingProjectId(null);
   };
   
-  const handleRenameProject = (oldName: string, newName: string) => {
-    if (!newName.trim() || oldName === newName) {
-      setEditingProjectId(null);
-      return;
-    }
-    renameProject(oldName, newName);
-    setEditingProjectId(null);
-  };
-  
   // Calculate Today's Progress
   const getTodayString = () => {
     const d = new Date();

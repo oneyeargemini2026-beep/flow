@@ -6,7 +6,7 @@ import { getLocalDateString, parseTaskInput } from '../utils';
 export const AddTaskModal = () => {
   const { isAddTaskOpen, setIsAddTaskOpen, setTasks, activeProject, folders, tags: globalTags, setTags: setGlobalTags, goals } = useAppContext();
   const [title, setTitle] = useState('');
-  const [priority, setPriority] = useState('p2');
+  const [priority, setPriority] = useState('p1');
   const [dueDate, setDueDate] = useState(getLocalDateString());
   const [dueTime, setDueTime] = useState('');
   const [project, setProject] = useState('');
@@ -240,12 +240,12 @@ export const ProcessInboxModal = () => {
   const inboxTasks = tasks.filter(t => t.isInbox && !t.completed);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [project, setProject] = useState('');
-  const [priority, setPriority] = useState('p3');
+  const [priority, setPriority] = useState('p1');
   const [goalId, setGoalId] = useState('');
 
   useEffect(() => {
     setProject('');
-    setPriority('p3');
+    setPriority('p1');
     setGoalId('');
   }, [currentIndex, isProcessInboxOpen]);
 
