@@ -27,6 +27,8 @@ export const Sidebar = () => {
   const [newProjectName, setNewProjectName] = useState('');
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [editingFolderName, setEditingFolderName] = useState('');
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [editingProjectName, setEditingProjectName] = useState('');
   const [deletingFolderId, setDeletingFolderId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null); // folderId or project-folderId-projName or tag-tagId
 
@@ -106,6 +108,24 @@ export const Sidebar = () => {
     }
     setFolders(prev => prev.map(f => f.id === folderId ? { ...f, name: editingFolderName.trim() } : f));
     setEditingFolderId(null);
+  };
+  
+  const handleRenameProject = (oldName: string, newName: string) => {
+    if (!newName.trim() || oldName === newName) {
+      setEditingProjectId(null);
+      return;
+    }
+    renameProject(oldName, newName);
+    setEditingProjectId(null);
+  };
+  
+  const handleRenameProject = (oldName: string, newName: string) => {
+    if (!newName.trim() || oldName === newName) {
+      setEditingProjectId(null);
+      return;
+    }
+    renameProject(oldName, newName);
+    setEditingProjectId(null);
   };
   
   // Calculate Today's Progress
@@ -598,7 +618,36 @@ export const Sidebar = () => {
                         className={`flex items-center gap-2 p-1.5 px-2.5 rounded-md cursor-pointer text-[12.5px] transition-colors border-t-2 group/project ${dragOverProjectId === proj ? 'border-t-accent' : 'border-t-transparent'} ${activeProject === proj ? 'text-accent2' : 'text-text-faint hover:text-text-muted'}`}
                         onClick={() => { setActiveProject(proj); setCurrentView('project'); if (window.innerWidth < 768) setIsSidebarOpen(false); }}
                       >
-                        <span>◈ {proj}</span>
+                                                  {editingProjectId === `${folder.id}-${proj}-${index}` ? (
+                            <input
+                              autoFocus
+                              type="text"
+                              value={editingProjectName}
+                              onChange={e => setEditingProjectName(e.target.value)}
+                              onBlur={() => handleRenameProject(proj, editingProjectName)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleRenameProject(proj, editingProjectName);
+                                if (e.key === 'Escape') setEditingProjectId(null);
+                              }}
+                              onClick={e => e.stopPropagation()}
+                              className="flex-1 bg-transparent border-none outline-none text-[12.5px] text-text-main"
+                            />
+                          ) : (
+                            <>
+                              <span onClick={() => { setActiveProject(proj); setCurrentView('project'); if (window.innerWidth < 768) setIsSidebarOpen(false); }}>◈ {proj}</span>
+                              <button
+                                  className={`delete-btn ml-auto p-0.5 rounded transition-colors ${confirmDeleteId === projDeleteId ? 'opacity-100 text-red-500 bg-red-500/10' : 'opacity-0 group-hover/project:opacity-100 text-text-faint hover:text-accent hover:bg-accent/10'}`}
+                                  onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingProjectId(`${folder.id}-${proj}-${index}`);
+                                      setEditingProjectName(proj);
+                                  }}
+                                  title="Rename project"
+                              >
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                              </button>
+                            </>
+                          )}
                         {pendingCount > 0 && (
                             <span className="ml-auto text-[10px] bg-bg4 text-text-faint px-1.5 rounded-full">{pendingCount}</span>
                         )}
@@ -846,7 +895,7 @@ export const Topbar = () => {
             <span className={`${activeProject ? 'hover:underline decoration-dotted underline-offset-4' : ''} uppercase tracking-wider font-medium text-sm md:text-base`}>{title}</span>
             {activeProject && (
               <button
-                className="opacity-0 group-hover/topbar-title:opacity-100 text-text-faint hover:text-text-main transition-opacity"
+                className="opacity-100 md:opacity-0 group-hover/topbar-title:opacity-100 text-text-faint hover:text-text-main transition-opacity"
                 title="Rename project"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
