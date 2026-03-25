@@ -164,8 +164,22 @@ const MainContent = () => {
 };
 
 const AppContent = () => {
-  const { user, authReady } = useAppContext();
+  const { user, authReady, setUserActivity } = useAppContext();
   
+  useEffect(() => {
+    console.log('AppContent: user changed', user);
+    if (user) {
+      const today = new Date().toISOString().split('T')[0];
+      console.log('AppContent: today', today);
+      setUserActivity(prev => {
+        console.log('AppContent: prev', prev);
+        if (prev.activeDates.includes(today)) return prev;
+        console.log('AppContent: updating activeDates');
+        return { ...prev, activeDates: [...prev.activeDates, today] };
+      });
+    }
+  }, [user]);
+
   if (!authReady) {
     return (
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-bg text-text-main">

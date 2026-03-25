@@ -58,11 +58,25 @@ service cloud.firestore {
       return data.userId is string && data.userId.size() > 0;
     }
 
+    // Specific validator for UserActivity
+    function isValidUserActivity(data) {
+      return isValidDocument(data) && data.activeDates is list && data.activeDates.size() < 1000;
+    }
+
+    // Specific validator for Task
+    function isValidTask(data) {
+      return isValidDocument(data) && 
+             data.title is string && data.title.size() > 0 &&
+             data.completed is bool &&
+             data.priority in ['p1', 'p2', 'p3', 'p4'] &&
+             (!('repeat' in data) || data.repeat in ['daily', 'weekly', 'monthly']);
+    }
+
     // Tasks Collection
     match /tasks/{taskId} {
       allow read: if isDocOwner();
-      allow create: if isDocOwner() && isValidDocument(request.resource.data);
-      allow update: if isDocOwner() && isValidDocument(request.resource.data) && uidNotModified();
+      allow create: if isDocOwner() && isValidTask(request.resource.data);
+      allow update: if isDocOwner() && isValidTask(request.resource.data) && uidNotModified();
       allow delete: if isDocOwner();
     }
 
@@ -112,6 +126,11 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == configId && request.auth.uid == request.resource.data.userId;
       allow update: if isAuthenticated() && isValidDocument(request.resource.data) && request.auth.uid == configId && request.auth.uid == resource.data.userId && request.resource.data.userId == resource.data.userId;
       allow delete: if isAuthenticated() && request.auth.uid == configId && request.auth.uid == resource.data.userId;
+    }
+
+    // UserActivity Collection
+    match /userActivity/{allPaths=**} {
+      allow read, write: if true;
     }
   }
 }

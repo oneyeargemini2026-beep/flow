@@ -12,6 +12,7 @@ export const AddTaskModal = () => {
   const [project, setProject] = useState('');
   const [section, setSection] = useState('');
   const [goalId, setGoalId] = useState('');
+  const [repeat, setRepeat] = useState<Task['repeat']>(undefined);
   const [tags, setTags] = useState<string[]>([]);
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagName, setNewTagName] = useState('');
@@ -21,6 +22,7 @@ export const AddTaskModal = () => {
       setProject(activeProject || '');
       setSection('');
       setGoalId('');
+      setRepeat(undefined);
       setTags([]);
       setIsAddingTag(false);
       setNewTagName('');
@@ -57,6 +59,7 @@ export const AddTaskModal = () => {
       project,
       section: section.trim() || undefined,
       goalId: goalId || undefined,
+      repeat: repeat,
       tags: finalTags,
       completed: false
     };
@@ -183,6 +186,19 @@ export const AddTaskModal = () => {
               value={dueTime}
               onChange={e => setDueTime(e.target.value)}
             />
+          </div>
+          <div className="flex-1">
+            <label className="text-[11px] font-mono text-text-faint mb-1.5 block uppercase tracking-[0.08em]">Repeat</label>
+            <select 
+              className="w-full bg-bg3 border border-border-strong rounded-lg px-3 py-2 text-text-main text-sm font-sans outline-none cursor-pointer"
+              value={repeat || ''}
+              onChange={e => setRepeat(e.target.value as any || undefined)}
+            >
+              <option value="">No repeat</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
           </div>
         </div>
 

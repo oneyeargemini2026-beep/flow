@@ -15,7 +15,8 @@
         "project": { "type": "string" },
         "tags": { "type": "array", "items": { "type": "string" } },
         "completedDate": { "type": "string" },
-        "userId": { "type": "string" }
+        "userId": { "type": "string" },
+        "repeat": { "type": "string", "enum": ["daily", "weekly", "monthly"] }
       },
       "required": ["id", "title", "completed", "priority", "userId"]
     },
@@ -108,6 +109,16 @@
         "deleted": { "type": "boolean" }
       },
       "required": ["id", "color", "pinned", "createdAt", "updatedAt", "userId"]
+    },
+    "UserActivity": {
+      "title": "UserActivity",
+      "description": "Activity tracking for the user",
+      "type": "object",
+      "properties": {
+        "activeDates": { "type": "array", "items": { "type": "string" } },
+        "userId": { "type": "string" }
+      },
+      "required": ["activeDates", "userId"]
     }
   },
   "firestore": {
@@ -138,6 +149,10 @@
     "/matrixConfigs/{configId}": {
       "schema": "MatrixConfig",
       "description": "Matrix configurations created by users"
+    },
+    "/userActivity/{userId}": {
+      "schema": "UserActivity",
+      "description": "Activity tracking for the user"
     }
   }
 }

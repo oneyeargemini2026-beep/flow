@@ -35,6 +35,7 @@ export interface Task {
   isInbox?: boolean;
   deleted?: boolean;
   goalId?: string;
+  repeat?: 'daily' | 'weekly' | 'monthly';
 }
 
 export interface Folder {
@@ -84,4 +85,8 @@ export interface Note {
   updatedAt: string;
   userId?: string;
   deleted?: boolean;
+}
+
+export interface UserActivity {
+  activeDates: string[];
 }

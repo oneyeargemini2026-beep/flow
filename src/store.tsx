@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { Task, Folder, Archive, ViewType, MatrixConfig, Tag, Goal, Note, Month } from './types';
+import { Task, Folder, Archive, ViewType, MatrixConfig, Tag, Goal, Note, Month, UserActivity } from './types';
 import { getLocalDateString, sanitizeData } from './utils';
 import { auth, db } from '@/src/lib/firebase';
 import { signInWithGoogle } from '@/src/lib/auth';
@@ -255,6 +255,8 @@ interface AppContextType {
   duplicateTask: (taskId: string) => void;
   editingTaskId: string | null;
   setEditingTaskId: (id: string | null) => void;
+  userActivity: UserActivity;
+  setUserActivity: React.Dispatch<React.SetStateAction<UserActivity>>;
 }
 
 export const AppContext = createContext<AppContextType | null>(null);
@@ -301,6 +303,7 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
   const [notes, setNotes] = useSyncedCollection<Note>('notes', user?.uid, []);
   const [archives, setArchives] = useSyncedCollection<Archive>('archives', user?.uid, initialArchives);
   const [matrixConfig, setMatrixConfig] = useSyncedDocument<MatrixConfig>('matrixConfigs', user?.uid || 'default', user?.uid, initialMatrixConfig);
+  const [userActivity, setUserActivity] = useSyncedDocument<UserActivity>('userActivity', user?.uid || 'default', user?.uid, { activeDates: [] });
 
   // Auto-archive logic
   useEffect(() => {
@@ -468,7 +471,8 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
       isSidebarOpen, setIsSidebarOpen,
       moveProject, renameProject,
       duplicateTask,
-      editingTaskId, setEditingTaskId
+      editingTaskId, setEditingTaskId,
+      userActivity, setUserActivity
     }}>
       {children}
     </AppContext.Provider>

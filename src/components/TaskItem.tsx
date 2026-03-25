@@ -382,6 +382,35 @@ export const TaskItem: React.FC<{ task: Task; disableDrag?: boolean }> = ({ task
           )}
 
           {expanded ? (
+            <div className="relative flex items-center">
+              <select
+                value={localTask.repeat || ''}
+                onChange={(e) => {
+                  const val = e.target.value || undefined;
+                  setLocalTask(prev => ({ ...prev, repeat: val as any }));
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="font-mono text-[10px] px-2 py-1 rounded border border-border-strong text-text-main bg-bg3 outline-none cursor-pointer max-w-[120px] appearance-none hover:border-accent transition-colors"
+              >
+                <option value="">No repeat</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+              <div className="absolute right-1.5 pointer-events-none text-text-faint">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+              </div>
+            </div>
+          ) : (
+            task.repeat && (
+              <span className="font-mono text-[10px] px-1.5 py-[1px] rounded border border-border-strong text-text-faint flex items-center gap-1">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
+                {task.repeat.charAt(0).toUpperCase() + task.repeat.slice(1)}
+              </span>
+            )
+          )}
+
+          {expanded ? (
             <div className="flex items-center gap-1.5">
               <div className="relative flex items-center group/date">
                 <Calendar size={12} className="absolute left-2 text-text-faint group-hover/date:text-accent transition-colors pointer-events-none" />

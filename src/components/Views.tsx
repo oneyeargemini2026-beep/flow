@@ -3,7 +3,7 @@ import { motion, useDragControls, useAnimation, AnimatePresence } from 'motion/r
 import { ChevronLeft, ChevronRight, Brain, Flame } from 'lucide-react';
 import { useAppContext } from '../store';
 import { TaskItem } from './TaskItem';
-import { getLocalDateString, parseTaskInput } from '../utils';
+import { getLocalDateString, parseTaskInput, getStreak } from '../utils';
 import { HexColorPicker } from 'react-colorful';
 import { Archive, MatrixQuadrant, Month } from '../types';
 
@@ -2193,7 +2193,7 @@ export const CalendarView = () => {
 };
 
 export const HistoryView = () => {
-  const { tasks, archives } = useAppContext();
+  const { tasks, archives, userActivity } = useAppContext();
   const [currentDate, setCurrentDate] = useState(new Date());
   
   // Combine active tasks and archived tasks for history
@@ -2203,41 +2203,8 @@ export const HistoryView = () => {
   const completedTasks = allTasks.filter(t => t.completed && t.completedDate);
   
   // 1. Streak Calculation
-  const getStreak = () => {
-    if (completedTasks.length === 0) return 0;
-    
-    // Get unique dates with completed tasks
-    const dates: string[] = Array.from(new Set(completedTasks.map(t => t.completedDate!.split('T')[0]))).sort() as string[];
-    
-    if (dates.length === 0) return 0;
-
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-    
-    // Check if streak is active (completed today or yesterday)
-    const lastCompleted = dates[dates.length - 1];
-    if (lastCompleted !== today && lastCompleted !== yesterday) return 0;
-
-    let streak = 1;
-    let current = new Date(lastCompleted);
-    
-    for (let i = dates.length - 2; i >= 0; i--) {
-      const prev = new Date(dates[i]);
-      const diffTime = Math.abs(current.getTime() - prev.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-      
-      if (diffDays === 1) {
-        streak++;
-        current = prev;
-      } else {
-        break;
-      }
-    }
-    return streak;
-  };
-
-  const streak = getStreak();
-  const totalDays = new Set(completedTasks.map(t => t.completedDate!.split('T')[0])).size;
+  const streak = getStreak(userActivity.activeDates);
+  const totalDays = userActivity.activeDates.length;
 
   // 2. Overview & Goals (Monthly)
   const currentMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;

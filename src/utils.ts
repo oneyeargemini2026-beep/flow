@@ -40,3 +40,32 @@ export const sanitizeData = (data: any): any => {
   });
   return sanitized;
 };
+
+export const getStreak = (activeDates: string[]) => {
+  const dates = [...activeDates].sort();
+  if (dates.length === 0) return 0;
+  
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  
+  // Check if streak is active (active today or yesterday)
+  const lastActive = dates[dates.length - 1];
+  if (lastActive !== today && lastActive !== yesterday) return 0;
+
+  let streak = 1;
+  let current = new Date(lastActive);
+  
+  for (let i = dates.length - 2; i >= 0; i--) {
+    const prev = new Date(dates[i]);
+    const diffTime = Math.abs(current.getTime() - prev.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+    
+    if (diffDays === 1) {
+      streak++;
+      current = prev;
+    } else {
+      break;
+    }
+  }
+  return streak;
+};
