@@ -74,11 +74,11 @@
         "tasks": { "type": "number" },
         "completed": { "type": "number" },
         "tags": { "type": "array", "items": { "type": "string" } },
-        "quarter": { "type": "string", "enum": ["q1", "q2", "q3", "q4"] },
+        "month": { "type": "string" },
         "items": { "type": "array", "items": { "type": "object" } },
         "userId": { "type": "string" }
       },
-      "required": ["id", "name", "color", "start", "end", "tasks", "completed", "quarter", "userId"]
+      "required": ["id", "name", "color", "start", "end", "tasks", "completed", "userId"]
     },
     "MatrixConfig": {
       "title": "MatrixConfig",

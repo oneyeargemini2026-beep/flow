@@ -41,6 +41,26 @@ export const sanitizeData = (data: any): any => {
   return sanitized;
 };
 
+export const calculateNextDate = (currentDate: string | undefined, repeat: 'daily' | 'weekly' | 'monthly'): string | undefined => {
+  if (!currentDate) return undefined;
+  
+  // Parse YYYY-MM-DD manually to avoid timezone issues
+  const [year, month, day] = currentDate.split('-').map(Number);
+  if (!year || !month || !day) return undefined;
+  
+  const date = new Date(year, month - 1, day);
+
+  if (repeat === 'daily') {
+    date.setDate(date.getDate() + 1);
+  } else if (repeat === 'weekly') {
+    date.setDate(date.getDate() + 7);
+  } else if (repeat === 'monthly') {
+    date.setMonth(date.getMonth() + 1);
+  }
+  
+  return getLocalDateString(date);
+};
+
 export const getStreak = (activeDates: string[]) => {
   const dates = [...activeDates].sort();
   if (dates.length === 0) return 0;

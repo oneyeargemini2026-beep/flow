@@ -386,7 +386,7 @@ export const TaskItem: React.FC<{ task: Task; disableDrag?: boolean }> = ({ task
               <select
                 value={localTask.repeat || ''}
                 onChange={(e) => {
-                  const val = e.target.value || undefined;
+                  const val = e.target.value || '';
                   setLocalTask(prev => ({ ...prev, repeat: val as any }));
                 }}
                 onClick={(e) => e.stopPropagation()}

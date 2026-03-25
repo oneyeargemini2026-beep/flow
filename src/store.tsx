@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Task, Folder, Archive, ViewType, MatrixConfig, Tag, Goal, Note, Month, UserActivity } from './types';
-import { getLocalDateString, sanitizeData } from './utils';
+import { getLocalDateString, sanitizeData, calculateNextDate } from './utils';
 import { auth, db } from '@/src/lib/firebase';
 import { signInWithGoogle } from '@/src/lib/auth';
 import { onAuthStateChanged, User, signOut } from 'firebase/auth';
@@ -134,7 +134,9 @@ function useSyncedCollection<T extends { id: string }>(
 
   const setSyncedItems: React.Dispatch<React.SetStateAction<T[]>> = (action) => {
     setItems(prev => {
-      const newItems = typeof action === 'function' ? (action as any)(prev) : action;
+      const newItemsRaw = typeof action === 'function' ? (action as any)(prev) : action;
+      // Safeguard against duplicate IDs
+      const newItems = Array.from(new Map(newItemsRaw.map((item: T) => [item.id, item])).values()) as T[];
       
       if (!userId) return newItems;
 
@@ -315,6 +317,8 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
       return true; // Archive all completed tasks immediately
     });
 
+    console.log(`[AutoArchive] Found ${tasksToArchive.length} tasks to archive.`);
+
     if (tasksToArchive.length > 0) {
       setArchives(prevArchives => {
         const newArchives = [...prevArchives];
@@ -347,12 +351,15 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
           } else {
             // Create a new object to ensure immutability
             archive = { ...newArchives[archiveIndex] };
-            if (!archive.items) archive.items = [];
+            // Deep copy items array to avoid mutating previous state
+            archive.items = archive.items ? [...archive.items] : [];
             newArchives[archiveIndex] = archive;
           }
           
           if (!archive.items!.find(t => t.id === task.id)) {
-             archive.items!.push(task);
+             // Remove tags and add to archive
+             const taskToArchive = { ...task, tags: [] };
+             archive.items!.push(taskToArchive);
              archive.tasks++;
              archive.completed++;
              
@@ -367,7 +374,24 @@ export const AppProvider: React.FC<{children: React.ReactNode}> = ({ children })
         return newArchives;
       });
 
-      setTasks(prevTasks => prevTasks.filter(t => !tasksToArchive.find(a => a.id === t.id)));
+      const newRepeatingTasks: Task[] = [];
+      tasksToArchive.forEach(task => {
+        if (task.repeat) {
+          const nextDate = calculateNextDate(task.dueDate || getLocalDateString(), task.repeat);
+          newRepeatingTasks.push({
+            ...task,
+            id: `t-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            completed: false,
+            completedDate: undefined,
+            dueDate: nextDate,
+          });
+        }
+      });
+
+      setTasks(prevTasks => {
+        const filtered = prevTasks.filter(t => !tasksToArchive.find(a => a.id === t.id));
+        return [...filtered, ...newRepeatingTasks];
+      });
     }
   }, [tasks, user]);
 

@@ -1163,38 +1163,6 @@ export const ArchiveView = () => {
                     </div>
                   </div>
                   
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {editingArchiveId === a.id && editingField === 'tags' ? (
-                      <input
-                        autoFocus
-                        className="font-mono text-[10px] bg-transparent border-none outline-none text-text-main w-full border-b border-accent"
-                        value={editValue}
-                        onChange={e => setEditValue(e.target.value)}
-                        onBlur={() => handleSaveArchive(a.id, 'tags')}
-                        onKeyDown={e => e.key === 'Enter' && handleSaveArchive(a.id, 'tags')}
-                        onClick={e => e.stopPropagation()}
-                        placeholder="Comma separated tags..."
-                      />
-                    ) : (
-                      <>
-                        {a.tags.map((t, index) => (
-                          <span key={`${t}-${index}`} className="text-[10px] px-1.5 py-0.5 rounded border border-border-strong text-text-faint bg-bg3">{t}</span>
-                        ))}
-                        <span 
-                          className="text-[10px] px-1.5 py-0.5 rounded border border-dashed border-border-strong text-text-faint cursor-pointer hover:text-text-main hover:border-text-muted transition-colors"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingArchiveId(a.id);
-                            setEditingField('tags');
-                            setEditValue(a.tags.join(', '));
-                          }}
-                        >
-                          + Tag
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  
                   {expandedArchiveId === a.id && (
                     <div className="mt-4 pt-4 border-t border-border-subtle animate-fadeIn" onClick={e => e.stopPropagation()}>
                       <div className="flex items-center justify-between mb-3">
