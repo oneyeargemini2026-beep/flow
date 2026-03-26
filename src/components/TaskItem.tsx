@@ -335,7 +335,7 @@ export const TaskItem: React.FC<{ task: Task; disableDrag?: boolean }> = ({ task
                 <option value="">No Project</option>
                 {folders.map(f => (
                   <React.Fragment key={f.id}>
-                    <option value={f.name}>{f.name} (Folder)</option>
+                    <option value={f.name}>{f.name}</option>
                     {f.projects.map((p, index) => (
                       <option key={`${f.id}-${p}-${index}`} value={p}>&nbsp;&nbsp;&nbsp;{p}</option>
                     ))}

@@ -1420,6 +1420,20 @@ export const TagsView = () => {
   const [editingTagName, setEditingTagName] = useState('');
   const [colorPickerTagId, setColorPickerTagId] = useState<string | null>(null);
   const [showNewTagColorPicker, setShowNewTagColorPicker] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deletingTagId, setDeletingTagId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (confirmDeleteId && !(e.target as Element).closest('.delete-btn')) {
+        setConfirmDeleteId(null);
+      }
+    };
+    if (confirmDeleteId) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [confirmDeleteId]);
 
   const handleCreateTag = () => {
     if (!newTagName.trim()) return;
@@ -1454,6 +1468,23 @@ export const TagsView = () => {
     setTags(prev => prev.map(t => t.id === tagId ? { ...t, color: newColor } : t));
   };
 
+  const handleDeleteTag = (tagId: string) => {
+    const tag = tags.find(t => t.id === tagId);
+    if (!tag) return;
+    
+    setDeletingTagId(tagId);
+    setConfirmDeleteId(null);
+    
+    setTimeout(() => {
+      setTags(prev => prev.filter(t => t.id !== tagId));
+      setTasks(prev => prev.map(t => ({
+        ...t,
+        tags: t.tags.filter(tagName => tagName !== tag.name)
+      })));
+      setDeletingTagId(null);
+    }, 300);
+  };
+
   const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetTag: string) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('text/plain');
@@ -1484,7 +1515,7 @@ export const TagsView = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ duration: 0.4, delay: index * 0.05, type: 'spring', bounce: 0.4 }}
-              className="bg-bg2 rounded-xl border border-border-subtle flex flex-col max-h-[400px]"
+              className={`bg-bg2 rounded-xl border border-border-subtle flex flex-col max-h-[400px] transition-all ${deletingTagId === tag.id ? 'animate-disintegrate pointer-events-none' : ''}`}
               onDragOver={(e) => {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'copy';
@@ -1529,8 +1560,28 @@ export const TagsView = () => {
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-text-faint bg-bg3 px-2 py-0.5 rounded-full font-mono">
-                  {tagTasks.length}
+                <div className="flex items-center gap-2">
+                  <div className="text-xs text-text-faint bg-bg3 px-2 py-0.5 rounded-full font-mono">
+                    {tagTasks.length}
+                  </div>
+                  <button
+                    className={`delete-btn p-1 rounded transition-colors ${confirmDeleteId === tag.id ? 'text-red-500 bg-red-500/10' : 'text-text-faint hover:text-red-500 hover:bg-red-500/10'}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (confirmDeleteId === tag.id) {
+                        handleDeleteTag(tag.id);
+                      } else {
+                        setConfirmDeleteId(tag.id);
+                      }
+                    }}
+                    title={confirmDeleteId === tag.id ? "Click again to confirm delete" : "Delete tag"}
+                  >
+                    {confirmDeleteId === tag.id ? (
+                      <span className="text-[10px] font-bold px-1">CONFIRM</span>
+                    ) : (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+                    )}
+                  </button>
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto p-2 custom-scrollbar min-h-[100px]">
@@ -1785,32 +1836,61 @@ export const TrashView = () => {
 export const UpcomingView = () => {
   const { tasks } = useAppContext();
   
-  const sortTasks = (tasksToSort: typeof tasks) => {
-    return [...tasksToSort].sort((a, b) => {
-      return a.title.localeCompare(b.title);
-    });
-  };
+  const todayStr = getLocalDateString();
+  
+  const upcomingTasks = tasks.filter(t => !t.completed && !t.deleted && t.dueDate && t.dueDate > todayStr);
 
-  const tomorrowStr = getLocalDateString(new Date(new Date().setDate(new Date().getDate() + 1)));
-  const tomorrowTasks = sortTasks(tasks.filter(t => !t.completed && !t.deleted && t.dueDate === tomorrowStr));
+  // Group by date
+  const groupedTasks = upcomingTasks.reduce((acc, task) => {
+    if (!task.dueDate) return acc;
+    if (!acc[task.dueDate]) {
+      acc[task.dueDate] = [];
+    }
+    acc[task.dueDate].push(task);
+    return acc;
+  }, {} as Record<string, typeof tasks>);
+
+  // Sort dates
+  const sortedDates = Object.keys(groupedTasks).sort();
 
   return (
     <div className="flex-1 overflow-y-auto p-3 px-3.5 md:p-5 md:px-6">
-      <div className="flex items-center gap-2.5 mb-2 mt-0">
-        <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-text-faint">Tomorrow — {new Date(tomorrowStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-        <div className="flex-1 h-[1px] bg-border-subtle"></div>
-      </div>
-      {tomorrowTasks.length > 0 ? tomorrowTasks.map((t, idx) => (
-        <motion.div
-          key={t.id}
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: idx * 0.03, type: 'spring', bounce: 0.4 }}
-        >
-          <TaskItem task={t} />
-        </motion.div>
-      )) : (
-        <div className="text-text-faint text-sm italic opacity-50 p-2">No tasks scheduled for tomorrow.</div>
+      {sortedDates.length > 0 ? sortedDates.map((dateStr, groupIdx) => {
+        const dateTasks = groupedTasks[dateStr].sort((a, b) => a.title.localeCompare(b.title));
+        
+        // Ensure the date is parsed correctly in local timezone
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const localDate = new Date(year, month - 1, day);
+        
+        // Check if it's tomorrow
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const isTomorrow = dateStr === getLocalDateString(tomorrow);
+        
+        const dateLabel = isTomorrow 
+          ? `Tomorrow — ${localDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`
+          : localDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
+        return (
+          <div key={dateStr} className="mb-8 last:mb-0">
+            <div className="flex items-center gap-2.5 mb-2 mt-0">
+              <div className="font-mono text-[11px] uppercase tracking-[0.1em] text-text-faint">{dateLabel}</div>
+              <div className="flex-1 h-[1px] bg-border-subtle"></div>
+            </div>
+            {dateTasks.map((t, idx) => (
+              <motion.div
+                key={t.id}
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: (groupIdx * 0.1) + (idx * 0.03), type: 'spring', bounce: 0.4 }}
+              >
+                <TaskItem task={t} />
+              </motion.div>
+            ))}
+          </div>
+        );
+      }) : (
+        <div className="text-text-faint text-sm italic opacity-50 p-2">No upcoming tasks scheduled.</div>
       )}
     </div>
   );

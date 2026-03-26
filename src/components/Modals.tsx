@@ -134,11 +134,12 @@ export const AddTaskModal = () => {
             >
               <option value="">No Project</option>
               {folders.map(f => (
-                <optgroup key={f.id} label={f.name}>
+                <React.Fragment key={f.id}>
+                  <option value={f.name}>{f.name}</option>
                   {f.projects.map((p, index) => (
-                    <option key={`${f.id}-${p}-${index}`} value={p}>{p}</option>
+                    <option key={`${f.id}-${p}-${index}`} value={p}>&nbsp;&nbsp;&nbsp;{p}</option>
                   ))}
-                </optgroup>
+                </React.Fragment>
               ))}
             </select>
           </div>
@@ -340,11 +341,12 @@ export const ProcessInboxModal = () => {
             >
               <option value="">No project</option>
               {folders.map(f => (
-                <optgroup key={f.id} label={f.name}>
+                <React.Fragment key={f.id}>
+                  <option value={f.name}>{f.name}</option>
                   {f.projects.map((p, index) => (
-                    <option key={`${f.id}-${p}-${index}`} value={p}>{p}</option>
+                    <option key={`${f.id}-${p}-${index}`} value={p}>&nbsp;&nbsp;&nbsp;{p}</option>
                   ))}
-                </optgroup>
+                </React.Fragment>
               ))}
             </select>
           </div>
